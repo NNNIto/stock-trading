@@ -17,6 +17,7 @@ from src.data.fetcher import (
 
 # ── _empty_ohlcv ────────────────────────────────────────────────────────────
 
+
 def test_empty_ohlcv_schema():
     df = _empty_ohlcv()
     assert df.is_empty()
@@ -26,18 +27,21 @@ def test_empty_ohlcv_schema():
 
 # ── _cross_check ─────────────────────────────────────────────────────────────
 
+
 def _make_ohlcv(symbol="AAPL", close=100.0, d=date(2024, 1, 2)):
-    return pl.DataFrame({
-        "symbol": [symbol],
-        "market": ["US"],
-        "date": [d],
-        "open": [close],
-        "high": [close + 1],
-        "low": [close - 1],
-        "close": [close],
-        "adj_close": [close],
-        "volume": [1_000_000],
-    }).cast({"date": pl.Date})
+    return pl.DataFrame(
+        {
+            "symbol": [symbol],
+            "market": ["US"],
+            "date": [d],
+            "open": [close],
+            "high": [close + 1],
+            "low": [close - 1],
+            "close": [close],
+            "adj_close": [close],
+            "volume": [1_000_000],
+        }
+    ).cast({"date": pl.Date})
 
 
 def test_cross_check_no_divergence(caplog):
@@ -50,6 +54,7 @@ def test_cross_check_divergence_logs_warning(caplog):
     primary = _make_ohlcv(close=100.0)
     fallback = _make_ohlcv(close=110.0)  # 10% diff – exceeds 2%
     import logging
+
     with caplog.at_level(logging.WARNING):
         _cross_check(primary, fallback, 0.02)
     # The warning may or may not appear depending on loguru config,
@@ -64,6 +69,7 @@ def test_cross_check_empty_dfs():
 
 # ── FallbackDataSource ────────────────────────────────────────────────────────
 
+
 class _GoodSource:
     name = "good"
 
@@ -74,7 +80,14 @@ class _GoodSource:
         return pl.DataFrame({"date": [date(2024, 1, 2)], "rate": [148.0]}).cast({"date": pl.Date})
 
     def fetch_earnings(self, symbol):
-        return pl.DataFrame({"symbol": [symbol], "report_date": [None], "eps_actual": [None], "eps_estimate": [None]}).cast({"report_date": pl.Date})
+        return pl.DataFrame(
+            {
+                "symbol": [symbol],
+                "report_date": [None],
+                "eps_actual": [None],
+                "eps_estimate": [None],
+            }
+        ).cast({"report_date": pl.Date})
 
 
 class _FailingSource:
@@ -119,6 +132,7 @@ def test_fallback_fx_returns_empty_on_all_fail():
 
 
 # ── YFinanceSource retry ──────────────────────────────────────────────────────
+
 
 def test_yfinance_retry_gives_up_after_max_attempts():
     source = YFinanceSource()

@@ -72,8 +72,10 @@ def run_update(
             # Fetch in batches of 50 to avoid yfinance limits
             batch_size = 50
             for i in range(0, len(syms), batch_size):
-                batch = syms[i:i + batch_size]
-                logger.info(f"{mkt}: batch {i // batch_size + 1}/{(len(syms) - 1) // batch_size + 1}")
+                batch = syms[i : i + batch_size]
+                logger.info(
+                    f"{mkt}: batch {i // batch_size + 1}/{(len(syms) - 1) // batch_size + 1}"
+                )
                 try:
                     raw = source.fetch_ohlcv(batch, fetch_start, end, mkt)
                     if raw.is_empty():

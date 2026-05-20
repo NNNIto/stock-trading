@@ -183,7 +183,9 @@ class Repository:
             conditions.append("date <= ?")
             params.append(end)
         where = "WHERE " + " AND ".join(conditions)
-        result = self._conn.execute(f"SELECT date, rate FROM fx_rates {where} ORDER BY date", params).arrow()
+        result = self._conn.execute(
+            f"SELECT date, rate FROM fx_rates {where} ORDER BY date", params
+        ).arrow()
         return pl.from_arrow(result)  # type: ignore[return-value]
 
     # ── Universe ──────────────────────────────────────────────────────────────

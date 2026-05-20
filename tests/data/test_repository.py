@@ -85,12 +85,14 @@ def test_query_ohlcv_multiple_symbols(repo):
 
 
 def test_upsert_earnings(repo):
-    df = pl.DataFrame({
-        "symbol": ["AAPL"],
-        "report_date": [date(2024, 1, 25)],
-        "eps_actual": [2.18],
-        "eps_estimate": [2.10],
-    }).cast({"report_date": pl.Date})
+    df = pl.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "report_date": [date(2024, 1, 25)],
+            "eps_actual": [2.18],
+            "eps_estimate": [2.10],
+        }
+    ).cast({"report_date": pl.Date})
     n = repo.upsert_earnings(df)
     assert n == 1
 
@@ -100,10 +102,12 @@ def test_upsert_earnings(repo):
 
 
 def test_upsert_fx(repo):
-    fx_df = pl.DataFrame({
-        "date": [date(2024, 1, 2), date(2024, 1, 3)],
-        "rate": [148.5, 149.0],
-    }).cast({"date": pl.Date})
+    fx_df = pl.DataFrame(
+        {
+            "date": [date(2024, 1, 2), date(2024, 1, 3)],
+            "rate": [148.5, 149.0],
+        }
+    ).cast({"date": pl.Date})
     n = repo.upsert_fx("USDJPY", fx_df)
     assert n == 2
 
@@ -137,13 +141,28 @@ def test_context_manager(tmp_path):
 
 
 def test_upsert_empty_df(repo):
-    empty = pl.DataFrame({
-        "symbol": [], "market": [], "date": [], "open": [], "high": [],
-        "low": [], "close": [], "adj_close": [], "volume": [],
-    }).cast({
-        "open": pl.Float64, "high": pl.Float64, "low": pl.Float64,
-        "close": pl.Float64, "adj_close": pl.Float64, "volume": pl.Int64,
-        "date": pl.Date,
-    })
+    empty = pl.DataFrame(
+        {
+            "symbol": [],
+            "market": [],
+            "date": [],
+            "open": [],
+            "high": [],
+            "low": [],
+            "close": [],
+            "adj_close": [],
+            "volume": [],
+        }
+    ).cast(
+        {
+            "open": pl.Float64,
+            "high": pl.Float64,
+            "low": pl.Float64,
+            "close": pl.Float64,
+            "adj_close": pl.Float64,
+            "volume": pl.Int64,
+            "date": pl.Date,
+        }
+    )
     n = repo.upsert_ohlcv(empty)
     assert n == 0

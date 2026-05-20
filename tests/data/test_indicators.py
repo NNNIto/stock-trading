@@ -12,24 +12,37 @@ def _make_price_series(n: int = 300, start_price: float = 100.0) -> pl.DataFrame
     """Generate synthetic uptrending OHLCV data."""
     dates = [date(2022, 1, 1) + timedelta(days=i) for i in range(n)]
     prices = [start_price + i * 0.1 for i in range(n)]
-    return pl.DataFrame({
-        "symbol": ["AAPL"] * n,
-        "date": dates,
-        "open": prices,
-        "high": [p * 1.01 for p in prices],
-        "low": [p * 0.99 for p in prices],
-        "close": prices,
-        "adj_close": prices,
-        "volume": [1_000_000] * n,
-        "market": ["US"] * n,
-    })
+    return pl.DataFrame(
+        {
+            "symbol": ["AAPL"] * n,
+            "date": dates,
+            "open": prices,
+            "high": [p * 1.01 for p in prices],
+            "low": [p * 0.99 for p in prices],
+            "close": prices,
+            "adj_close": prices,
+            "volume": [1_000_000] * n,
+            "market": ["US"] * n,
+        }
+    )
 
 
 def test_add_indicators_columns_present():
     df = _make_price_series(300)
     result = add_indicators(df)
-    expected_cols = ["ma_20", "ma_50", "ma_200", "rsi_14", "rsi_2", "atr_14",
-                     "vol_ma_20", "ret_5d", "ret_6m", "high_252d", "vol_ratio_20"]
+    expected_cols = [
+        "ma_20",
+        "ma_50",
+        "ma_200",
+        "rsi_14",
+        "rsi_2",
+        "atr_14",
+        "vol_ma_20",
+        "ret_5d",
+        "ret_6m",
+        "high_252d",
+        "vol_ratio_20",
+    ]
     for col in expected_cols:
         assert col in result.columns, f"Missing column: {col}"
 
@@ -47,15 +60,23 @@ def test_add_indicators_ma20_correct():
 def test_add_indicators_rsi_range():
     # Use oscillating prices so RSI stays well within bounds
     import math
+
     n = 300
     dates = [date(2022, 1, 1) + timedelta(days=i) for i in range(n)]
     prices = [100.0 + 10 * math.sin(i * 0.2) for i in range(n)]
-    df = pl.DataFrame({
-        "symbol": ["AAPL"] * n, "date": dates,
-        "open": prices, "high": [p * 1.005 for p in prices],
-        "low": [p * 0.995 for p in prices], "close": prices,
-        "adj_close": prices, "volume": [1_000_000] * n, "market": ["US"] * n,
-    })
+    df = pl.DataFrame(
+        {
+            "symbol": ["AAPL"] * n,
+            "date": dates,
+            "open": prices,
+            "high": [p * 1.005 for p in prices],
+            "low": [p * 0.995 for p in prices],
+            "close": prices,
+            "adj_close": prices,
+            "volume": [1_000_000] * n,
+            "market": ["US"] * n,
+        }
+    )
     result = add_indicators(df)
     rsi_vals = result["rsi_14"].drop_nulls()
     assert (rsi_vals >= 0).all()
@@ -71,11 +92,27 @@ def test_add_indicators_52w_high():
 
 
 def test_add_indicators_empty_df():
-    empty = pl.DataFrame({
-        "symbol": [], "date": [], "open": [], "high": [], "low": [],
-        "close": [], "adj_close": [], "volume": [],
-    }).cast({"open": pl.Float64, "high": pl.Float64, "low": pl.Float64,
-             "close": pl.Float64, "adj_close": pl.Float64, "volume": pl.Int64})
+    empty = pl.DataFrame(
+        {
+            "symbol": [],
+            "date": [],
+            "open": [],
+            "high": [],
+            "low": [],
+            "close": [],
+            "adj_close": [],
+            "volume": [],
+        }
+    ).cast(
+        {
+            "open": pl.Float64,
+            "high": pl.Float64,
+            "low": pl.Float64,
+            "close": pl.Float64,
+            "adj_close": pl.Float64,
+            "volume": pl.Int64,
+        }
+    )
     result = add_indicators(empty)
     assert result.is_empty()
 

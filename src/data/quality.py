@@ -11,8 +11,8 @@ from src.utils.logger import get_logger
 logger = get_logger()
 
 # Thresholds
-MAX_DAILY_RETURN = 0.50   # flag if abs daily return > 50%
-MIN_PRICE = 0.01          # flag if price < 1 yen / 1 cent
+MAX_DAILY_RETURN = 0.50  # flag if abs daily return > 50%
+MIN_PRICE = 0.01  # flag if price < 1 yen / 1 cent
 
 
 @dataclass
@@ -65,11 +65,11 @@ def check_outliers(df: pl.DataFrame, symbol: str) -> int:
     )
 
     outlier_mask = (
-        (pl.col("_daily_ret").abs() > MAX_DAILY_RETURN) |
-        (pl.col("close") < MIN_PRICE) |
-        (pl.col("open") < MIN_PRICE) |
-        (pl.col("high") < MIN_PRICE) |
-        (pl.col("low") < MIN_PRICE)
+        (pl.col("_daily_ret").abs() > MAX_DAILY_RETURN)
+        | (pl.col("close") < MIN_PRICE)
+        | (pl.col("open") < MIN_PRICE)
+        | (pl.col("high") < MIN_PRICE)
+        | (pl.col("low") < MIN_PRICE)
     )
     n = df_with_ret.filter(outlier_mask).height
     if n > 0:
@@ -86,11 +86,11 @@ def check_consistency(df: pl.DataFrame, symbol: str) -> int:
         return 0
 
     bad = df.filter(
-        (pl.col("high") < pl.col("low")) |
-        (pl.col("high") < pl.col("close")) |
-        (pl.col("high") < pl.col("open")) |
-        (pl.col("low") > pl.col("close")) |
-        (pl.col("low") > pl.col("open"))
+        (pl.col("high") < pl.col("low"))
+        | (pl.col("high") < pl.col("close"))
+        | (pl.col("high") < pl.col("open"))
+        | (pl.col("low") > pl.col("close"))
+        | (pl.col("low") > pl.col("open"))
     )
     n = bad.height
     if n > 0:
@@ -131,11 +131,11 @@ def clean_ohlcv(df: pl.DataFrame) -> pl.DataFrame:
     # Drop inconsistent rows
     if all(c in df.columns for c in ["open", "high", "low", "close"]):
         df = df.filter(
-            (pl.col("high") >= pl.col("low")) &
-            (pl.col("high") >= pl.col("close")) &
-            (pl.col("high") >= pl.col("open")) &
-            (pl.col("low") <= pl.col("close")) &
-            (pl.col("low") <= pl.col("open"))
+            (pl.col("high") >= pl.col("low"))
+            & (pl.col("high") >= pl.col("close"))
+            & (pl.col("high") >= pl.col("open"))
+            & (pl.col("low") <= pl.col("close"))
+            & (pl.col("low") <= pl.col("open"))
         )
 
     # Forward-fill volume nulls
