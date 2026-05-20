@@ -70,8 +70,10 @@ class DataSource(ABC):
                 return fn(*args, **kwargs)
             except Exception as e:
                 if attempt == attempts:
-                    raise DataSourceError(f"{self.name}: failed after {attempts} attempts: {e}") from e
-                wait = 2 ** attempt
+                    raise DataSourceError(
+                        f"{self.name}: failed after {attempts} attempts: {e}"
+                    ) from e
+                wait = 2**attempt
                 logger.warning(f"{self.name}: attempt {attempt} failed ({e}), retrying in {wait}s")
                 time.sleep(wait)
 
@@ -115,7 +117,9 @@ class YFinanceSource(DataSource):
 
         raw = self._retry(_download)
         if raw is None or raw.empty:
-            return pl.DataFrame({"date": [], "rate": []}).cast({"date": pl.Date, "rate": pl.Float64})  # type: ignore[arg-type]
+            return pl.DataFrame({"date": [], "rate": []}).cast(
+                {"date": pl.Date, "rate": pl.Float64}
+            )  # type: ignore[arg-type]
 
         import pandas as pd
 
@@ -123,7 +127,9 @@ class YFinanceSource(DataSource):
         df.columns = [str(c).lower() for c in df.columns]
         dates = pd.to_datetime(df["date"]).dt.date.tolist()
         rates = df["close"].tolist()
-        return pl.DataFrame({"date": dates, "rate": rates}).cast({"date": pl.Date, "rate": pl.Float64})  # type: ignore[arg-type]
+        return pl.DataFrame({"date": dates, "rate": rates}).cast(
+            {"date": pl.Date, "rate": pl.Float64}
+        )  # type: ignore[arg-type]
 
     def fetch_earnings(self, symbol: str) -> pl.DataFrame:
         """Fetch earnings via yfinance. Coverage is limited (typically ~4 quarters).
@@ -147,12 +153,14 @@ class YFinanceSource(DataSource):
                     report_date = col.date() if hasattr(col, "date") else col
                     eps_row = income.loc["Basic EPS"] if "Basic EPS" in income.index else None
                     eps_actual = float(eps_row[col]) if eps_row is not None else None
-                    rows.append({
-                        "symbol": symbol,
-                        "report_date": report_date,
-                        "eps_actual": eps_actual,
-                        "eps_estimate": None,  # Not available via yfinance
-                    })
+                    rows.append(
+                        {
+                            "symbol": symbol,
+                            "report_date": report_date,
+                            "eps_actual": eps_actual,
+                            "eps_estimate": None,  # Not available via yfinance
+                        }
+                    )
                 except Exception:
                     continue
 
@@ -160,21 +168,43 @@ class YFinanceSource(DataSource):
                 logger.warning(f"yfinance: earnings parse failed for {symbol}")
                 return _empty_earnings(symbol)
 
-            logger.info(f"yfinance: fetched {len(rows)} earnings records for {symbol} (eps_estimate unavailable)")
-            return pl.DataFrame(rows).cast({  # type: ignore[arg-type]
-                "eps_actual": pl.Float64,
-                "eps_estimate": pl.Float64,
-                "report_date": pl.Date,
-            })
+            logger.info(
+                f"yfinance: fetched {len(rows)} earnings records for {symbol} (eps_estimate unavailable)"
+            )
+            return pl.DataFrame(rows).cast(
+                {  # type: ignore[arg-type]
+                    "eps_actual": pl.Float64,
+                    "eps_estimate": pl.Float64,
+                    "report_date": pl.Date,
+                }
+            )
         except Exception as e:
             logger.warning(f"yfinance: earnings error for {symbol}: {e}")
             return _empty_earnings(symbol)
 
 
 class StooqSource(DataSource):
-    """Fallback data source using Stooq (free, no API key required)."""
+    """Fallback data source using Stooq CSV API (free, no API key, no pandas_datareader)."""
 
     name = "stooq"
+    _BASE = "https://stooq.com/q/d/l/"
+
+    def _fetch_csv(self, stooq_sym: str, start: date, end: date) -> Any:
+        import io
+        import urllib.request
+
+        import pandas as pd
+
+        url = (
+            f"{self._BASE}?s={stooq_sym}"
+            f"&d1={start.strftime('%Y%m%d')}&d2={end.strftime('%Y%m%d')}&i=d"
+        )
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0 (compatible; stock-trading-bot/1.0)"}
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            content = resp.read().decode()
+        return pd.read_csv(io.StringIO(content))
 
     def fetch_ohlcv(
         self,
@@ -184,24 +214,39 @@ class StooqSource(DataSource):
         market: str,
     ) -> pl.DataFrame:
         import pandas as pd
-        import pandas_datareader.data as web  # type: ignore[import-untyped]
 
         frames = []
         for sym in symbols:
             stooq_sym = _to_stooq_symbol(sym, market)
             try:
+
                 def _fetch(s: str = stooq_sym) -> Any:
-                    return web.DataReader(s, "stooq", start=start, end=end)
+                    return self._fetch_csv(s, start, end)
 
                 raw = self._retry(_fetch)
                 if raw is None or raw.empty:
                     continue
-                raw = raw.reset_index()
                 raw.columns = [str(c).lower() for c in raw.columns]
                 raw["symbol"] = sym
                 raw["market"] = market
                 raw["adj_close"] = raw["close"]  # Stooq doesn't provide adjusted close
-                frames.append(raw[["symbol", "market", "date", "open", "high", "low", "close", "adj_close", "volume"]])
+                raw["date"] = pd.to_datetime(raw["date"]).dt.date
+                raw["volume"] = raw["volume"].fillna(0).astype("int64")
+                frames.append(
+                    raw[
+                        [
+                            "symbol",
+                            "market",
+                            "date",
+                            "open",
+                            "high",
+                            "low",
+                            "close",
+                            "adj_close",
+                            "volume",
+                        ]
+                    ]
+                )
             except Exception as e:
                 logger.warning(f"stooq: failed for {sym}: {e}")
 
@@ -209,28 +254,33 @@ class StooqSource(DataSource):
             return _empty_ohlcv()
 
         combined = pd.concat(frames, ignore_index=True)
-        combined["date"] = pd.to_datetime(combined["date"]).dt.date
         return pl.from_pandas(combined).cast(OHLCV_SCHEMA)  # type: ignore[arg-type]
 
     def fetch_fx(self, pair: str, start: date, end: date) -> pl.DataFrame:
-        import pandas_datareader.data as web  # type: ignore[import-untyped]
+        import pandas as pd
 
         stooq_pair = pair.replace("=X", "").upper()
         try:
+
             def _fetch() -> Any:
-                return web.DataReader(stooq_pair, "stooq", start=start, end=end)
+                return self._fetch_csv(stooq_pair, start, end)
 
             raw = self._retry(_fetch)
             if raw is None or raw.empty:
-                return pl.DataFrame({"date": [], "rate": []}).cast({"date": pl.Date, "rate": pl.Float64})  # type: ignore[arg-type]
-            raw = raw.reset_index()
+                return pl.DataFrame({"date": [], "rate": []}).cast(
+                    {"date": pl.Date, "rate": pl.Float64}
+                )  # type: ignore[arg-type]
             raw.columns = [str(c).lower() for c in raw.columns]
-            return pl.DataFrame({"date": raw["date"].dt.date.tolist(), "rate": raw["close"].tolist()}).cast(
+            dates = pd.to_datetime(raw["date"]).dt.date.tolist()
+            rates = raw["close"].tolist()
+            return pl.DataFrame({"date": dates, "rate": rates}).cast(
                 {"date": pl.Date, "rate": pl.Float64}
-            )
+            )  # type: ignore[arg-type]
         except Exception as e:
             logger.warning(f"stooq: FX fetch failed for {pair}: {e}")
-            return pl.DataFrame({"date": [], "rate": []}).cast({"date": pl.Date, "rate": pl.Float64})  # type: ignore[arg-type]
+            return pl.DataFrame({"date": [], "rate": []}).cast(
+                {"date": pl.Date, "rate": pl.Float64}
+            )  # type: ignore[arg-type]
 
     def fetch_earnings(self, symbol: str) -> pl.DataFrame:
         logger.warning(f"stooq: earnings data not available for {symbol}")
@@ -351,17 +401,20 @@ class FallbackDataSource:
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+
 def _empty_ohlcv() -> pl.DataFrame:
     return pl.DataFrame({col: [] for col in OHLCV_SCHEMA}).cast(OHLCV_SCHEMA)  # type: ignore[arg-type]
 
 
 def _empty_earnings(symbol: str) -> pl.DataFrame:
-    return pl.DataFrame({
-        "symbol": [symbol],
-        "report_date": [None],
-        "eps_actual": [None],
-        "eps_estimate": [None],
-    }).cast({"report_date": pl.Date, "eps_actual": pl.Float64, "eps_estimate": pl.Float64})
+    return pl.DataFrame(
+        {
+            "symbol": [symbol],
+            "report_date": [None],
+            "eps_actual": [None],
+            "eps_estimate": [None],
+        }
+    ).cast({"report_date": pl.Date, "eps_actual": pl.Float64, "eps_estimate": pl.Float64})
 
 
 def _normalize_yfinance(raw: Any, symbols: list[str], market: str) -> pl.DataFrame:
@@ -447,8 +500,12 @@ def _notify_fallback(source_name: str) -> None:
         url = os.environ.get("SLACK_WEBHOOK_URL")
         if not url:
             return
-        payload = _json.dumps({"text": f":warning: Data source fallback activated: using {source_name}"}).encode()
-        urllib.request.urlopen(urllib.request.Request(url, payload, {"Content-Type": "application/json"}))
+        payload = _json.dumps(
+            {"text": f":warning: Data source fallback activated: using {source_name}"}
+        ).encode()
+        urllib.request.urlopen(
+            urllib.request.Request(url, payload, {"Content-Type": "application/json"})
+        )
     except Exception:
         pass
 
@@ -457,6 +514,7 @@ def build_default_source(settings: Any | None = None) -> FallbackDataSource:
     """Build FallbackDataSource from settings."""
     if settings is None:
         from src.utils.config import get_settings
+
         settings = get_settings()
 
     cfg = settings.data.sources
