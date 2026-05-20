@@ -196,10 +196,20 @@ class YFinanceSource(DataSource):
 
 
 class StooqSource(DataSource):
-    """Fallback data source using Stooq CSV API (free, no API key, no pandas_datareader)."""
+    """Fallback data source using Stooq CSV API.
+
+    NOTE: Stooq now requires an API key for CSV downloads (as of 2025).
+    Without STOOQ_API_KEY env var, requests will fail with an API key prompt.
+    Set STOOQ_API_KEY to enable this source.
+    """
 
     name = "stooq"
     _BASE = "https://stooq.com/q/d/l/"
+
+    def _get_api_key(self) -> str | None:
+        import os
+
+        return os.environ.get("STOOQ_API_KEY")
 
     def _fetch_csv(self, stooq_sym: str, start: date, end: date) -> Any:
         import io
@@ -207,10 +217,14 @@ class StooqSource(DataSource):
 
         import pandas as pd
 
+        api_key = self._get_api_key()
         url = (
             f"{self._BASE}?s={stooq_sym}"
             f"&d1={start.strftime('%Y%m%d')}&d2={end.strftime('%Y%m%d')}&i=d"
         )
+        if api_key:
+            url += f"&apikey={api_key}"
+
         req = urllib.request.Request(
             url, headers={"User-Agent": "Mozilla/5.0 (compatible; stock-trading-bot/1.0)"}
         )
@@ -225,6 +239,10 @@ class StooqSource(DataSource):
         end: date,
         market: str,
     ) -> pl.DataFrame:
+        if not self._get_api_key():
+            logger.warning("stooq: STOOQ_API_KEY not set — skipping (API key required since 2025)")
+            return _empty_ohlcv()
+
         import pandas as pd
 
         frames = []
@@ -438,47 +456,63 @@ def _empty_earnings(symbol: str) -> pl.DataFrame:
 
 
 def _normalize_yfinance(raw: Any, symbols: list[str], market: str) -> pl.DataFrame:
-    """Convert yfinance multi-ticker DataFrame to common schema."""
+    """Convert yfinance DataFrame (MultiIndex or flat) to common schema.
+
+    yfinance always returns MultiIndex columns as of v0.2.x, even for a
+    single symbol. We extract each symbol's slice and normalise column names.
+    """
     import pandas as pd
 
-    # yfinance returns MultiIndex columns when multiple symbols
+    frames = []
+
     if isinstance(raw.columns, pd.MultiIndex):
-        rows = []
-        unique_syms = raw.columns.get_level_values(1).unique()
+        unique_syms = raw.columns.get_level_values(1).unique().tolist()
         for sym in unique_syms:
             try:
-                sub = raw.xs(sym, axis=1, level=1).dropna(how="all").reset_index()
-                sub.columns = [str(c).lower() for c in sub.columns]
+                sub = raw.xs(sym, axis=1, level=1).copy()
+                sub = sub.dropna(how="all").reset_index()
+                # Normalise column names: lowercase, replace spaces with _
+                sub.columns = [str(c).lower().replace(" ", "_") for c in sub.columns]
+                # adj_close might be named "adj_close" already or absent
+                if "adj_close" not in sub.columns:
+                    if "close" in sub.columns:
+                        sub["adj_close"] = sub["close"]
                 sub["symbol"] = sym
                 sub["market"] = market
-                sub["adj_close"] = sub.get("adj close", sub.get("close", sub["close"]))
-                rows.append(sub)
+                frames.append(_select_ohlcv_cols(sub))
             except Exception:
                 continue
-        if not rows:
-            return _empty_ohlcv()
-        combined = pd.concat(rows, ignore_index=True)
     else:
-        # Single symbol
-        raw = raw.reset_index()
-        raw.columns = [str(c).lower() for c in raw.columns]
-        raw["symbol"] = symbols[0]
-        raw["market"] = market
-        raw["adj_close"] = raw.get("adj close", raw.get("close", raw["close"]))
-        combined = raw
+        # Flat columns (legacy / single-ticker fallback)
+        sub = raw.reset_index().copy()
+        sub.columns = [str(c).lower().replace(" ", "_") for c in sub.columns]
+        if "adj_close" not in sub.columns:
+            if "close" in sub.columns:
+                sub["adj_close"] = sub["close"]
+        sub["symbol"] = symbols[0]
+        sub["market"] = market
+        frames.append(_select_ohlcv_cols(sub))
 
-    combined = combined.rename(columns={"adj close": "adj_close"})
+    if not frames:
+        return _empty_ohlcv()
+
+    combined = pd.concat(frames, ignore_index=True)
     combined["date"] = pd.to_datetime(combined["date"]).dt.date
-
-    needed = ["symbol", "market", "date", "open", "high", "low", "close", "adj_close", "volume"]
-    for col in needed:
-        if col not in combined.columns:
-            combined[col] = None
-
-    combined = combined[needed].dropna(subset=["date", "close"])
+    combined = combined.dropna(subset=["date", "close"])
     combined["volume"] = combined["volume"].fillna(0).astype("int64")
+    # Drop duplicate (symbol, date) keeping last
+    combined = combined.drop_duplicates(subset=["symbol", "date"], keep="last")
 
     return pl.from_pandas(combined).cast(OHLCV_SCHEMA)  # type: ignore[arg-type]
+
+
+def _select_ohlcv_cols(df: Any) -> Any:
+    """Return only the OHLCV columns we need, adding nulls for any missing."""
+    needed = ["symbol", "market", "date", "open", "high", "low", "close", "adj_close", "volume"]
+    for col in needed:
+        if col not in df.columns:
+            df[col] = None
+    return df[needed]
 
 
 def _to_stooq_symbol(symbol: str, market: str) -> str:
