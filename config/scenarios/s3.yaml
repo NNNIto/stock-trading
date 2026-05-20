@@ -1,0 +1,22 @@
+scenario_id: S3
+name: "押し目買い（RSI＋トレンド）"
+enabled: true
+version: "1.0.0"
+
+parameters:
+  trend_ma_days: 50             # トレンドフィルタMA期間
+  trend_slope_window: 10        # MA上向き判定（N日前比）
+  rsi_period: 14                # RSI計算期間
+  rsi_oversold: 35              # RSI売られすぎ閾値（直近5日内に到達）
+  rsi_recovery: 40              # RSI回復閾値（当日）
+  rsi_recovery_window: 5        # 売られすぎからの回復を判定する窓
+  take_profit_pct: 0.15         # 利確（エントリー比）
+  rsi_take_profit: 70           # RSI利確閾値
+  stop_loss_pct: -0.07          # ロスカット
+  time_exit_days: 45            # 時間切れ（営業日）
+  trend_exit_ma_days: 50        # トレンド転換判定MA
+
+change_log:
+  - version: "1.0.0"
+    date: "2026-05-20"
+    reason: "初期パラメータ設定（scenarios.md推奨値採用）"

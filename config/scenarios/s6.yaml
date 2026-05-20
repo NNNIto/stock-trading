@@ -1,0 +1,21 @@
+scenario_id: S6
+name: "平均回帰（短期反発）"
+enabled: true
+version: "1.0.0"
+
+parameters:
+  return_window: 5              # 下落判定期間（営業日）
+  return_threshold: -0.10       # 下落率閾値
+  trend_ma_days: 200            # 長期トレンドフィルタ
+  volume_multiplier: 2.0        # 出来高倍率（売りクライマックス確認）
+  rsi_period: 2                 # 短期RSI期間
+  rsi_oversold: 10              # 極端な売られすぎ閾値
+  take_profit_pct: 0.05         # 利確
+  rsi_take_profit: 70           # RSI利確閾値（短期RSI）
+  stop_loss_pct: -0.05          # ロスカット
+  time_exit_days: 10            # 時間切れ（短期想定）
+
+change_log:
+  - version: "1.0.0"
+    date: "2026-05-20"
+    reason: "初期パラメータ設定（scenarios.md推奨値採用）"

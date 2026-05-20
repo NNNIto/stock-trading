@@ -1,0 +1,19 @@
+scenario_id: S2
+name: "52週高値ブレイクアウト"
+enabled: true
+version: "1.0.0"
+
+parameters:
+  high_lookback_days: 252       # 52週高値判定期間
+  volume_multiplier: 1.5        # 当日出来高 / 20日平均出来高
+  trend_ma_days: 200            # トレンドフィルタMA期間
+  trend_slope_window: 20        # MA上向き判定（N日前比）
+  stop_loss_pct: -0.08          # ロスカット（エントリー比）
+  trailing_stop_pct: -0.15      # トレーリングストップ（高値比）
+  trend_exit_ma_days: 20        # トレンド転換判定MA
+  time_exit_days: 180           # 時間切れ（営業日）
+
+change_log:
+  - version: "1.0.0"
+    date: "2026-05-20"
+    reason: "初期パラメータ設定（scenarios.md推奨値採用）"
