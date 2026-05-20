@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS earnings (
     report_date  DATE,
     eps_actual   DOUBLE,
     eps_estimate DOUBLE,
+    surprise_pct DOUBLE,
     PRIMARY KEY (symbol, report_date)
 );
 
@@ -139,14 +140,18 @@ class Repository:
     def upsert_earnings(self, df: pl.DataFrame) -> int:
         if df.is_empty():
             return 0
+        # Add surprise_pct column if missing (backward compat)
+        if "surprise_pct" not in df.columns:
+            df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("surprise_pct"))
         self._conn.register("_earnings_staging", df.to_arrow())
         self._conn.execute("""
-            INSERT INTO earnings (symbol, report_date, eps_actual, eps_estimate)
-            SELECT symbol, report_date, eps_actual, eps_estimate
+            INSERT INTO earnings (symbol, report_date, eps_actual, eps_estimate, surprise_pct)
+            SELECT symbol, report_date, eps_actual, eps_estimate, surprise_pct
             FROM _earnings_staging
             ON CONFLICT (symbol, report_date) DO UPDATE SET
                 eps_actual   = excluded.eps_actual,
-                eps_estimate = excluded.eps_estimate
+                eps_estimate = excluded.eps_estimate,
+                surprise_pct = excluded.surprise_pct
         """)
         self._conn.unregister("_earnings_staging")
         return df.height

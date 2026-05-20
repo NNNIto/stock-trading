@@ -131,50 +131,62 @@ class YFinanceSource(DataSource):
             {"date": pl.Date, "rate": pl.Float64}
         )  # type: ignore[arg-type]
 
-    def fetch_earnings(self, symbol: str) -> pl.DataFrame:
-        """Fetch earnings via yfinance. Coverage is limited (typically ~4 quarters).
+    def fetch_earnings(self, symbol: str, limit: int = 50) -> pl.DataFrame:
+        """Fetch earnings via yfinance get_earnings_dates().
 
-        WARNING: EPS estimates are not reliably available through yfinance.
-        S4/PEAD implementation may need simplified fallback (gap+volume only).
+        Returns EPS estimate (consensus), reported EPS, surprise%, and
+        earnings announcement date/time for past quarters.
+
+        Coverage: ~49 quarters for US stocks (back to ~2014),
+                  ~88 quarters for JP stocks (back to ~2004).
+        EPS estimates are analyst consensus as of announcement time.
         """
         import yfinance as yf
 
         try:
             ticker = yf.Ticker(symbol)
-            income = ticker.quarterly_income_stmt
-            if income is None or income.empty:
-                logger.warning(f"yfinance: no earnings data for {symbol}")
+            ed = ticker.get_earnings_dates(limit=limit)
+            if ed is None or ed.empty:
+                logger.warning(f"yfinance: no earnings_dates for {symbol}")
                 return _empty_earnings(symbol)
 
-            # Extract basic EPS if available
+            # Keep only past quarters with reported EPS
+            past = ed[ed["Reported EPS"].notna()].copy()
+            if past.empty:
+                logger.warning(f"yfinance: no reported EPS yet for {symbol}")
+                return _empty_earnings(symbol)
+
             rows = []
-            for col in income.columns:
+            for dt, row in past.iterrows():
                 try:
-                    report_date = col.date() if hasattr(col, "date") else col
-                    eps_row = income.loc["Basic EPS"] if "Basic EPS" in income.index else None
-                    eps_actual = float(eps_row[col]) if eps_row is not None else None
+                    report_date = dt.date() if hasattr(dt, "date") else dt
                     rows.append(
                         {
                             "symbol": symbol,
                             "report_date": report_date,
-                            "eps_actual": eps_actual,
-                            "eps_estimate": None,  # Not available via yfinance
+                            "eps_actual": float(row["Reported EPS"])
+                            if row["Reported EPS"] is not None
+                            else None,
+                            "eps_estimate": float(row["EPS Estimate"])
+                            if row["EPS Estimate"] is not None
+                            else None,
+                            "surprise_pct": float(row["Surprise(%)"])
+                            if row["Surprise(%)"] is not None
+                            else None,
                         }
                     )
                 except Exception:
                     continue
 
             if not rows:
-                logger.warning(f"yfinance: earnings parse failed for {symbol}")
                 return _empty_earnings(symbol)
 
-            logger.info(
-                f"yfinance: fetched {len(rows)} earnings records for {symbol} (eps_estimate unavailable)"
-            )
-            return pl.DataFrame(rows).cast(
-                {  # type: ignore[arg-type]
+            logger.info(f"yfinance: fetched {len(rows)} earnings records for {symbol}")
+            return pl.DataFrame(rows).cast(  # type: ignore[arg-type]
+                {
                     "eps_actual": pl.Float64,
                     "eps_estimate": pl.Float64,
+                    "surprise_pct": pl.Float64,
                     "report_date": pl.Date,
                 }
             )
@@ -413,8 +425,16 @@ def _empty_earnings(symbol: str) -> pl.DataFrame:
             "report_date": [None],
             "eps_actual": [None],
             "eps_estimate": [None],
+            "surprise_pct": [None],
         }
-    ).cast({"report_date": pl.Date, "eps_actual": pl.Float64, "eps_estimate": pl.Float64})
+    ).cast(  # type: ignore[arg-type]
+        {
+            "report_date": pl.Date,
+            "eps_actual": pl.Float64,
+            "eps_estimate": pl.Float64,
+            "surprise_pct": pl.Float64,
+        }
+    )
 
 
 def _normalize_yfinance(raw: Any, symbols: list[str], market: str) -> pl.DataFrame:
