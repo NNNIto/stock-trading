@@ -1,0 +1,50 @@
+project:
+  name: stock-trading
+  capital_jpy: 3000000
+
+execution:
+  slippage_pct: 0.002
+  commission_pct: 0.001
+  fx_cost_pct: 0.005  # 米国株のみ、片道（往復で実質1.0%）
+
+risk:
+  max_position_pct: 0.20
+  default_position_pct: 0.15
+  max_positions: 7
+  max_sector_concentration: 3
+  portfolio_dd_circuit_breaker: -0.20
+
+macro_filters:
+  vix_threshold: 35
+  nikkei_drawdown_threshold: -0.10
+  fomc_pause_days: 1
+  boj_pause_days: 1
+
+backtest:
+  learning_window_months: 12
+  validation_window_months: 3
+  walkforward_step_months: 3
+  out_of_sample_start: "2025-01-01"
+  random_seed: 42
+
+data:
+  start_date: "2018-01-01"
+  universe:
+    jp: nikkei225
+    us: sp500
+  sources:
+    primary: yfinance
+    fallback_order:
+      - stooq
+      - jquants
+      - alphavantage
+    retry_attempts: 3
+    cross_check_tolerance_pct: 0.02
+    cross_check_enabled: true
+
+notification:
+  slack_webhook_env: SLACK_WEBHOOK_URL
+  alert_on:
+    - new_signal
+    - stop_loss_triggered
+    - circuit_breaker
