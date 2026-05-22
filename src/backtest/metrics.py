@@ -139,8 +139,10 @@ def _equity_metrics(
     excess_ret = daily_ret - rf_daily
 
     mean_excess = float(np.mean(excess_ret))
-    std_ret = float(np.std(daily_ret, ddof=1)) if len(daily_ret) > 1 else 0.0
-    sharpe = (mean_excess / std_ret * math.sqrt(252)) if std_ret > 0 else 0.0
+    # Use std of excess returns (not raw returns) for the strict Sharpe definition.
+    # When risk_free_rate=0 the results are identical; for non-zero rf this is correct.
+    std_excess = float(np.std(excess_ret, ddof=1)) if len(excess_ret) > 1 else 0.0
+    sharpe = (mean_excess / std_excess * math.sqrt(252)) if std_excess > 0 else 0.0
 
     # Sortino: downside deviation = sqrt(mean(min(excess_r, 0)^2)) * sqrt(252).
     # The mean is taken over ALL periods (not only negative ones) so the

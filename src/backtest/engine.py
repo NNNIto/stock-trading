@@ -331,6 +331,9 @@ class BacktestEngine:
             pending_entries = still_pending_entries
 
             # ── Update open positions (holding_days, peak_price) ─────────────
+            # holding_days counts TRADING DAYS (days with close data).
+            # TradeRecord.holding_days uses calendar days for reporting.
+            # scenario time_exit_days parameters are in trading days.
             for sym, pos in list(open_positions.items()):
                 row = day_prices.get(sym)
                 if row and row.get("close") is not None:
