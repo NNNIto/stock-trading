@@ -53,7 +53,7 @@ def check_missing(df: pl.DataFrame, symbol: str) -> int:
 
 
 def check_outliers(df: pl.DataFrame, symbol: str) -> int:
-    """Return count of rows with suspicious price movements (>50% daily change) or negative prices."""
+    """Return count of rows with suspicious price movements (>30% daily change) or negative prices."""
     if "close" not in df.columns or df.height < 2:
         return 0
 

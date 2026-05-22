@@ -101,10 +101,10 @@ class S2Breakout(ScenarioBase):
         if close <= position.peak_price * (1 + p.trailing_stop_pct):
             return ExitReason.TRAILING_STOP
 
-        ma_20 = _f("ma_20")
-        ma_20_slope = _f("ma_20_slope")
-        if not (math.isnan(ma_20) or math.isnan(ma_20_slope)):
-            if close < ma_20 and ma_20_slope < 0:
+        trend_ma = _f(f"ma_{p.trend_exit_ma_days}")
+        trend_slope = _f(f"ma_{p.trend_exit_ma_days}_slope")
+        if not (math.isnan(trend_ma) or math.isnan(trend_slope)):
+            if close < trend_ma and trend_slope < 0:
                 return ExitReason.TREND_REVERSAL
 
         if position.holding_days >= p.time_exit_days:
