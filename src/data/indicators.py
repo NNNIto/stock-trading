@@ -53,10 +53,18 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     high = pdf["high"]
     low = pdf["low"]
 
+    def _safe_series(result: pd.Series | None, index: pd.Index) -> pd.Series:
+        """Return result or a NaN-filled Series when pandas-ta returns None."""
+        import pandas as pd
+
+        return result if result is not None else pd.Series(float("nan"), index=index)
+
+    idx = close.index
+
     # Moving averages
-    pdf["ma_20"] = ta.sma(close, length=20)
-    pdf["ma_50"] = ta.sma(close, length=50)
-    pdf["ma_200"] = ta.sma(close, length=200)
+    pdf["ma_20"] = _safe_series(ta.sma(close, length=20), idx)
+    pdf["ma_50"] = _safe_series(ta.sma(close, length=50), idx)
+    pdf["ma_200"] = _safe_series(ta.sma(close, length=200), idx)
 
     # MA direction: positive = upward
     pdf["ma_20_slope"] = pdf["ma_20"].diff(10)
@@ -64,15 +72,15 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["ma_50_slope"] = pdf["ma_50"].diff(10)
 
     # RSI
-    pdf["rsi_14"] = ta.rsi(close, length=14)
-    pdf["rsi_2"] = ta.rsi(close, length=2)
+    pdf["rsi_14"] = _safe_series(ta.rsi(close, length=14), idx)
+    pdf["rsi_2"] = _safe_series(ta.rsi(close, length=2), idx)
 
     # ATR (uses adjusted high/low/close for scale consistency)
-    atr_df = ta.atr(high, low, close, length=14)
-    pdf["atr_14"] = atr_df
+    atr_result = ta.atr(high, low, close, length=14)
+    pdf["atr_14"] = _safe_series(atr_result, idx)
 
     # Volume moving average
-    pdf["vol_ma_20"] = ta.sma(volume, length=20)
+    pdf["vol_ma_20"] = _safe_series(ta.sma(volume, length=20), idx)
 
     # Returns
     pdf["ret_5d"] = close.pct_change(5)
