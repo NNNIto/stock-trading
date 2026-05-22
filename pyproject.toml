@@ -21,6 +21,7 @@ dependencies = [
     "lxml>=6.1.1",
     "html5lib>=1.1",
     "beautifulsoup4>=4.14.3",
+    "numpy>=2.2.6",
 ]
 
 [project.optional-dependencies]
