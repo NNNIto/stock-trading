@@ -142,15 +142,17 @@ def _equity_metrics(
     std_ret = float(np.std(daily_ret, ddof=1)) if len(daily_ret) > 1 else 0.0
     sharpe = (mean_excess / std_ret * math.sqrt(252)) if std_ret > 0 else 0.0
 
-    # Sortino: downside deviation uses squared negative excess returns.
-    # When there are no negative returns the denominator is 0; return inf
-    # (no downside risk at all) rather than 0 (would imply bad performance).
-    neg_excess = excess_ret[excess_ret < 0]
-    if len(neg_excess) > 1:
-        downside_std = float(np.sqrt(np.mean(neg_excess**2))) * math.sqrt(252)
-        sortino = (mean_excess * 252 / downside_std) if downside_std > 0 else float("inf")
+    # Sortino: downside deviation = sqrt(mean(min(excess_r, 0)^2)) * sqrt(252).
+    # The mean is taken over ALL periods (not only negative ones) so the
+    # denominator is consistent with the Sharpe denominator and the ratio is
+    # comparable across portfolios with different win-rate characteristics.
+    clipped = np.minimum(excess_ret, 0.0)
+    downside_var = float(np.mean(clipped**2))
+    if downside_var > 0:
+        downside_std = math.sqrt(downside_var) * math.sqrt(252)
+        sortino = mean_excess * 252 / downside_std
     elif mean_excess > 0:
-        sortino = float("inf")  # positive return with zero downside
+        sortino = float("inf")  # positive return with zero downside risk
     else:
         sortino = 0.0
 
