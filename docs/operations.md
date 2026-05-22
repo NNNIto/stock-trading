@@ -11,15 +11,16 @@
 ### 1.1 cron 設定（Linux）
 
 ```bash
-# crontab -e で以下を追加
+# crontab -e で以下を追加 (uv のフルパスを使用 — cron は PATH が制限される)
 # 毎日 06:01 JST: データ更新
-1 6 * * 1-5  cd /home/sys1/stock-trading && uv run python scripts/data_update.py >> logs/data_update.log 2>&1
+1 6 * * 1-5  cd /home/sys1/stock-trading && /home/sys1/.local/bin/uv run python scripts/data_update.py >> /home/sys1/stock-trading/logs/data_update.log 2>&1
 
 # 毎日 06:05 JST: シグナル生成
-5 6 * * 1-5  cd /home/sys1/stock-trading && uv run python scripts/daily_signals.py >> logs/daily_signals.log 2>&1
+5 6 * * 1-5  cd /home/sys1/stock-trading && /home/sys1/.local/bin/uv run python scripts/daily_signals.py >> /home/sys1/stock-trading/logs/daily_signals.log 2>&1
 ```
 
-> タイムゾーン確認: `timedatectl | grep "Time zone"` で Asia/Tokyo を確認すること
+> タイムゾーン確認: `timedatectl | grep "Time zone"` → Asia/Tokyo (JST, +0900) であること  
+> uv パス確認: `which uv` → `/home/sys1/.local/bin/uv` であること（環境により異なる）
 
 ### 1.2 日次作業フロー
 
