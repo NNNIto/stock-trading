@@ -24,6 +24,9 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
 
     Input must have columns: date, open, high, low, close, adj_close, volume.
     Output adds indicator columns; rows with insufficient history will have nulls.
+
+    'close' is overwritten with adj_close so that all price comparisons downstream
+    (MA crossovers, stop-loss checks, etc.) operate on a consistent adjusted basis.
     """
     if df.is_empty() or df.height < 5:
         return df
@@ -32,10 +35,20 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     if "date" in pdf.columns:
         pdf = pdf.set_index("date")
 
-    close = pdf["adj_close"] if "adj_close" in pdf.columns else pdf["close"]
+    raw_close = pdf["close"]
+    adj_close = pdf["adj_close"] if "adj_close" in pdf.columns else pdf["close"]
     high = pdf["high"]
     low = pdf["low"]
     volume = pdf["volume"]
+
+    # Adjustment ratio: scale raw OHLC prices to the split/dividend-adjusted basis.
+    # Where raw_close is 0 (shouldn't happen for valid data), fall back to ratio=1.
+    adj_ratio = (adj_close / raw_close).replace([float("inf"), float("-inf")], 1.0).fillna(1.0)
+    adj_high = high * adj_ratio
+
+    # Normalize close to adj_close so scenarios compare prices on the same adjusted scale.
+    pdf["close"] = adj_close
+    close = adj_close
 
     # Moving averages
     pdf["ma_20"] = ta.sma(close, length=20)
@@ -62,8 +75,10 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["ret_5d"] = close.pct_change(5)
     pdf["ret_6m"] = close.pct_change(126)
 
-    # 52-week (252 day) high
-    pdf["high_252d"] = close.rolling(252).max()
+    # 52-week (252 day) high of adjusted daily high prices.
+    # Using actual intraday highs (scaled by adj_ratio) rather than adj_close rolling max
+    # to correctly identify breakout levels as seen on adjusted-price charts.
+    pdf["high_252d"] = adj_high.rolling(252).max()
 
     # Volume ratio vs 20-day average
     pdf["vol_ratio_20"] = volume / pdf["vol_ma_20"]

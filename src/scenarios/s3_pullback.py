@@ -102,7 +102,7 @@ class S3Pullback(ScenarioBase):
 
         close = _f("close")
         rsi_14 = _f("rsi_14")
-        ma_50 = _f("ma_50")
+        trend_ma = _f(f"ma_{p.trend_exit_ma_days}")
 
         if close >= position.entry_price * (1 + p.take_profit_pct):
             return ExitReason.TAKE_PROFIT
@@ -112,7 +112,7 @@ class S3Pullback(ScenarioBase):
         if close <= position.entry_price * (1 + p.stop_loss_pct):
             return ExitReason.STOP_LOSS
 
-        if not math.isnan(ma_50) and close < ma_50:
+        if not math.isnan(trend_ma) and close < trend_ma:
             return ExitReason.TREND_REVERSAL
 
         if position.holding_days >= p.time_exit_days:

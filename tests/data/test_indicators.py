@@ -86,9 +86,44 @@ def test_add_indicators_rsi_range():
 def test_add_indicators_52w_high():
     df = _make_price_series(300)
     result = add_indicators(df)
-    # For monotonically increasing prices, 252d high should equal current close
+    # high_252d is the 252-day rolling max of adjusted high prices (high * adj_ratio).
+    # In _make_price_series: high = adj_close * 1.01, adj_ratio = 1.0 (close == adj_close).
+    # For monotonically increasing prices the latest high is the rolling maximum.
     last_row = result.sort("date").tail(1)
-    assert last_row["high_252d"][0] == pytest.approx(last_row["adj_close"][0])
+    assert last_row["high_252d"][0] == pytest.approx(last_row["adj_close"][0] * 1.01, rel=1e-3)
+
+
+def test_close_normalized_to_adj_close():
+    """add_indicators overwrites close with adj_close for consistent downstream comparisons."""
+    n = 300
+    dates = [date(2022, 1, 1) + timedelta(days=i) for i in range(n)]
+    raw_prices = [100.0 + i * 0.1 for i in range(n)]
+    adj_prices = [p * 0.5 for p in raw_prices]  # simulate 2:1 split backward adjustment
+    df = pl.DataFrame(
+        {
+            "symbol": ["AAPL"] * n,
+            "date": dates,
+            "open": raw_prices,
+            "high": [p * 1.01 for p in raw_prices],
+            "low": [p * 0.99 for p in raw_prices],
+            "close": raw_prices,
+            "adj_close": adj_prices,
+            "volume": [1_000_000] * n,
+            "market": ["US"] * n,
+        }
+    )
+    result = add_indicators(df)
+    non_null = result.filter(pl.col("close").is_not_null())
+    assert (non_null["close"] == non_null["adj_close"]).all()
+
+
+def test_high_252d_uses_adjusted_high():
+    """high_252d is based on adjusted daily high prices, not adj_close rolling max."""
+    df = _make_price_series(300)
+    result = add_indicators(df)
+    last_row = result.sort("date").tail(1)
+    # high = adj_close * 1.01 in test data, so high_252d should exceed adj_close
+    assert last_row["high_252d"][0] > last_row["adj_close"][0]
 
 
 def test_add_indicators_empty_df():
