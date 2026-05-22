@@ -42,7 +42,8 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["ma_50"] = ta.sma(close, length=50)
     pdf["ma_200"] = ta.sma(close, length=200)
 
-    # MA direction: positive = upward (vs 20 days ago)
+    # MA direction: positive = upward
+    pdf["ma_20_slope"] = pdf["ma_20"].diff(10)
     pdf["ma_200_slope"] = pdf["ma_200"].diff(20)
     pdf["ma_50_slope"] = pdf["ma_50"].diff(10)
 

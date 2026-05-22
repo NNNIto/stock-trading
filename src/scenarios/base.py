@@ -124,13 +124,13 @@ class ScenarioBase(ABC):
         """
 
     @abstractmethod
-    def get_exit_signal(self, position: Position, current_data: pl.Series) -> str:
+    def get_exit_signal(self, position: Position, current_data: dict[str, Any]) -> str:
         """Determine exit reason for an open position given today's data.
 
         Args:
             position: The open position with entry price, peak price, etc.
-            current_data: A Polars Series (one row as named series) with
-                          today's OHLCV + indicators.
+            current_data: A dict mapping column name → scalar value for
+                          today's OHLCV + indicators (e.g. from df.row(i, named=True)).
 
         Returns:
             ExitReason constant if position should be closed today,

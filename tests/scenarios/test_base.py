@@ -42,7 +42,7 @@ class _DummyScenario(ScenarioBase):
             }
         )
 
-    def get_exit_signal(self, position: Position, current_data: pl.Series) -> str:
+    def get_exit_signal(self, position: Position, current_data: dict[str, Any]) -> str:
         return ExitReason.NO_EXIT
 
 
@@ -145,7 +145,7 @@ def test_generate_signals_returns_schema(dummy_config: Path):
 def test_get_exit_signal_no_exit(dummy_config: Path):
     s = _DummyScenario(config_path=dummy_config)
     pos = Position("AAPL", "DUMMY", date(2024, 1, 2), 100.0, 10)
-    row = pl.Series("close", [105.0])
+    row: dict[str, Any] = {"close": 105.0}
     result = s.get_exit_signal(pos, row)
     assert result == ExitReason.NO_EXIT
 
