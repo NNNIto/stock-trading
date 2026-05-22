@@ -170,6 +170,10 @@ class Repository:
     def upsert_fx(self, pair: str, df: pl.DataFrame) -> int:
         if df.is_empty():
             return 0
+        # Drop NaN rates (yfinance returns NaN for the current trading day before market close)
+        df = df.filter(pl.col("rate").is_not_nan() & pl.col("rate").is_not_null())
+        if df.is_empty():
+            return 0
         fx_df = df.with_columns(pl.lit(pair).alias("pair")).select(["pair", "date", "rate"])
         self._conn.register("_fx_staging", fx_df.to_arrow())
         self._conn.execute("""
