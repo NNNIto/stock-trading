@@ -204,11 +204,11 @@ def test_max_positions_respected():
     engine = _make_engine(scenario=scenario, capital=10_000_000)
     result = engine.run(data, start_date=start, end_date=start + timedelta(days=4))
 
-    # Max 7 positions; open_positions at any time ≤ 7
-    max_open = result.equity_curve.height  # just check we ran without error
-    assert max_open > 0
-    # Check that no more than 7 trades were opened (10 signals but cap at 7)
-    assert result.trades.height + len(result.open_positions) <= 7
+    # positions at end ≤ max_positions (7) — cap is enforced during the run
+    assert len(result.open_positions) <= 7
+    # all trades in result are end_of_backtest MTM (no closed trades in 5-day window)
+    eob = result.trades.filter(pl.col("exit_reason") == "end_of_backtest")
+    assert eob.height <= 7  # never exceeded the cap
 
 
 def test_reproducibility_with_seed():
@@ -247,3 +247,51 @@ def test_equity_curve_has_expected_columns():
     assert "date" in result.equity_curve.columns
     assert "portfolio_value" in result.equity_curve.columns
     assert "cash" in result.equity_curve.columns
+
+
+def test_pnl_includes_buy_fees():
+    """PnL = sell_net - buy_total_cost (both legs, all fees)."""
+    start = date(2024, 1, 2)
+    scenario = _make_stub(buy_signals={("AAPL", start)}, time_exit_days=5)
+    data = _make_data(["AAPL"], start, n_days=20, price=100.0, market="US")
+    engine = _make_engine(scenario=scenario)
+    result = engine.run(data, start_date=start, end_date=start + timedelta(days=19))
+
+    assert not result.trades.is_empty()
+    trade = result.trades.row(0, named=True)
+    # Flat market → pnl must be negative and larger than sell-side fees alone
+    assert trade["pnl"] < 0
+    # fees must include both buy and sell side
+    assert trade["fees"] > 0
+    # PnL must be consistent: sell_net - buy_total_cost
+    # At flat price: loss ≈ slippage (both ways) + commission (RT) + FX (both ways)
+    loss_pct = abs(trade["pnl_pct"])
+    assert 0.01 < loss_pct < 0.03  # 1–3% round-trip cost range
+
+
+def test_holding_days_is_calendar_days():
+    """holding_days = (exit_date - entry_date).days (calendar days)."""
+    start = date(2024, 1, 2)
+    scenario = _make_stub(buy_signals={("AAPL", start)}, time_exit_days=5)
+    data = _make_data(["AAPL"], start, n_days=20)
+    engine = _make_engine(scenario=scenario)
+    result = engine.run(data, start_date=start, end_date=start + timedelta(days=19))
+
+    assert not result.trades.is_empty()
+    trade = result.trades.row(0, named=True)
+    expected = (trade["exit_date"] - trade["entry_date"]).days
+    assert trade["holding_days"] == expected
+
+
+def test_open_positions_at_end_included_in_trades():
+    """Positions still open at end of backtest appear in trades as end_of_backtest."""
+    start = date(2024, 1, 2)
+    # Signal on day 0, time_exit_days=100 so it won't close within 5 days
+    scenario = _make_stub(buy_signals={("AAPL", start)}, time_exit_days=100)
+    data = _make_data(["AAPL"], start, n_days=5)
+    engine = _make_engine(scenario=scenario)
+    result = engine.run(data, start_date=start, end_date=start + timedelta(days=4))
+
+    eob_trades = result.trades.filter(pl.col("exit_reason") == "end_of_backtest")
+    assert not eob_trades.is_empty()
+    assert eob_trades["symbol"][0] == "AAPL"

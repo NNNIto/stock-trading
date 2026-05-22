@@ -35,6 +35,7 @@ class _OpenPosition:
     quantity: int
     market: str
     peak_price: float
+    buy_total_cost: float  # buy_fill.net_value — includes gross + commission + FX
     holding_days: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -73,7 +74,7 @@ class _PendingSell:
     scenario_id: str
     entry_date: date
     entry_price: float
-    holding_days: int
+    buy_total_cost: float  # full buy outflow including fees — for accurate PnL
     entry_fill_id: str = ""
 
 
@@ -260,9 +261,11 @@ class BacktestEngine:
                 open_positions.pop(order.symbol, None)
 
                 # Build trade record
-                entry_value = order.entry_price * order.quantity
-                pnl = fill.net_value - entry_value
-                pnl_pct = pnl / entry_value if entry_value != 0 else 0.0
+                # pnl = sell net proceeds - total buy cost (both legs, all fees)
+                pnl = fill.net_value - order.buy_total_cost
+                pnl_pct = pnl / order.buy_total_cost if order.buy_total_cost != 0 else 0.0
+                buy_fees = order.buy_total_cost - order.entry_price * order.quantity
+                holding_days = (current_date - order.entry_date).days
 
                 completed_trades.append(
                     TradeRecord(
@@ -277,10 +280,10 @@ class BacktestEngine:
                         exit_date=current_date,
                         exit_price=fill.fill_price,
                         quantity=order.quantity,
-                        fees=fill.commission + fill.fx_cost,
+                        fees=buy_fees + fill.commission + fill.fx_cost,
                         pnl=pnl,
                         pnl_pct=pnl_pct,
-                        holding_days=order.holding_days,
+                        holding_days=holding_days,
                         exit_reason=order.exit_reason,
                     )
                 )
@@ -321,6 +324,7 @@ class BacktestEngine:
                     quantity=buy_fill.quantity,
                     market=entry_order.market,
                     peak_price=buy_fill.fill_price,
+                    buy_total_cost=buy_fill.net_value,
                     holding_days=0,
                 )
 
@@ -356,7 +360,7 @@ class BacktestEngine:
                             scenario_id=pos.scenario_id,
                             entry_date=pos.entry_date,
                             entry_price=pos.entry_price,
-                            holding_days=pos.holding_days,
+                            buy_total_cost=pos.buy_total_cost,
                         )
                     )
 
@@ -375,28 +379,51 @@ class BacktestEngine:
 
             self.macro_filter.update(current_date)
 
-        # ── Force-close any remaining open positions (mark exit as end_of_backtest) ─
+        # ── Mark remaining open positions to last-day close (end_of_backtest) ─
+        # Use the last trading day's prices for MTM exit; these positions are
+        # included in trades so performance metrics capture unrealized PnL.
+        last_day_prices = price_lookup.get(trading_days[-1], {}) if trading_days else {}
         for sym, pos in open_positions.items():
-            pending_sells.append(
-                _PendingSell(
-                    symbol=sym,
-                    quantity=pos.quantity,
-                    market=pos.market,
-                    exit_reason="end_of_backtest",
+            last_row = last_day_prices.get(sym)
+            if last_row and last_row.get("close") is not None:
+                mtm_price = float(last_row["close"])
+            else:
+                mtm_price = pos.entry_price  # fallback: no MTM gain/loss
+            mtm_gross = mtm_price * pos.quantity
+            pnl = mtm_gross - pos.buy_total_cost
+            pnl_pct = pnl / pos.buy_total_cost if pos.buy_total_cost != 0 else 0.0
+            last_date = trading_days[-1] if trading_days else end_date
+            holding_days = (last_date - pos.entry_date).days
+            buy_fees = pos.buy_total_cost - pos.entry_price * pos.quantity
+            completed_trades.append(
+                TradeRecord(
+                    trade_id=str(uuid.uuid4()),
+                    mode=self.mode,
                     scenario_id=pos.scenario_id,
+                    scenario_version="",
+                    symbol=sym,
+                    market=pos.market,
                     entry_date=pos.entry_date,
                     entry_price=pos.entry_price,
-                    holding_days=pos.holding_days,
+                    exit_date=last_date,
+                    exit_price=mtm_price,
+                    quantity=pos.quantity,
+                    fees=buy_fees,  # sell-side fees omitted: no actual transaction
+                    pnl=pnl,
+                    pnl_pct=pnl_pct,
+                    holding_days=holding_days,
+                    exit_reason="end_of_backtest",
                 )
             )
 
         # Build result DataFrames
         trades_df = _trades_to_df(completed_trades)
         equity_df = pl.DataFrame(equity_rows).sort("date")
-        remaining = [pos.to_position() for pos in open_positions.values()]
 
+        n_closed = len([t for t in completed_trades if t.exit_reason != "end_of_backtest"])
+        n_open = len(open_positions)
         logger.info(
-            f"backtest: {len(completed_trades)} trades, "
+            f"backtest: {n_closed} closed + {n_open} MTM trades, "
             f"final equity {equity_rows[-1]['portfolio_value']:,.0f} JPY"
             if equity_rows
             else "backtest: 0 trades"
@@ -404,7 +431,7 @@ class BacktestEngine:
         return BacktestResult(
             trades=trades_df,
             equity_curve=equity_df,
-            open_positions=remaining,
+            open_positions=[pos.to_position() for pos in open_positions.values()],
         )
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -530,7 +557,7 @@ class BacktestEngine:
                             scenario_id=evict_pos.scenario_id,
                             entry_date=evict_pos.entry_date,
                             entry_price=evict_pos.entry_price,
-                            holding_days=evict_pos.holding_days,
+                            buy_total_cost=evict_pos.buy_total_cost,
                         )
                     )
                     logger.info(f"backtest: S4 evicting S6 position in {evict_sym}")
