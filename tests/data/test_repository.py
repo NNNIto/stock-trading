@@ -101,6 +101,45 @@ def test_upsert_earnings(repo):
     assert result["eps_actual"][0] == pytest.approx(2.18)
 
 
+def test_upsert_earnings_null_report_date_skipped(repo):
+    # _empty_earnings() placeholder rows (report_date=None) must be silently dropped
+    df = pl.DataFrame(
+        {
+            "symbol": ["AAPL"],
+            "report_date": [None],
+            "eps_actual": [None],
+            "eps_estimate": [None],
+            "surprise_pct": [None],
+        }
+    ).cast(
+        {
+            "report_date": pl.Date,
+            "eps_actual": pl.Float64,
+            "eps_estimate": pl.Float64,
+            "surprise_pct": pl.Float64,
+        }
+    )
+    n = repo.upsert_earnings(df)
+    assert n == 0
+    assert repo.query_earnings("AAPL").is_empty()
+
+
+def test_upsert_universe(repo):
+    df = pl.DataFrame(
+        {
+            "symbol": ["7203.T", "AAPL"],
+            "market": ["JP", "US"],
+            "name": ["トヨタ自動車", "Apple Inc."],
+            "sector": ["輸送用機器", "Technology"],
+        }
+    )
+    n = repo.upsert_universe(df)
+    assert n == 2
+    result = repo.query_universe()
+    assert result.height == 2
+    assert set(result["symbol"].to_list()) == {"7203.T", "AAPL"}
+
+
 def test_upsert_fx(repo):
     fx_df = pl.DataFrame(
         {
@@ -166,3 +205,40 @@ def test_upsert_empty_df(repo):
     )
     n = repo.upsert_ohlcv(empty)
     assert n == 0
+
+
+def test_get_fx_last_date_empty(repo):
+    assert repo.get_fx_last_date("USDJPY") is None
+
+
+def test_get_fx_last_date_with_data(repo):
+    df = pl.DataFrame(
+        {
+            "date": [date(2024, 1, 2), date(2024, 1, 3)],
+            "rate": [150.0, 151.0],
+        }
+    )
+    repo.upsert_fx("USDJPY", df)
+    assert repo.get_fx_last_date("USDJPY") == "2024-01-03"
+
+
+def test_get_min_last_date_all_missing(repo):
+    assert repo.get_min_last_date(["AAPL", "MSFT"]) is None
+
+
+def test_get_min_last_date_partial_missing(repo):
+    df = pl.DataFrame([_ohlcv_row("AAPL", date(2024, 1, 5))])
+    repo.upsert_ohlcv(df)
+    # MSFT has no data → should return None (full reload needed)
+    assert repo.get_min_last_date(["AAPL", "MSFT"]) is None
+
+
+def test_get_min_last_date_returns_earliest(repo):
+    df = pl.DataFrame(
+        [
+            _ohlcv_row("AAPL", date(2024, 1, 10)),
+            _ohlcv_row("MSFT", date(2024, 1, 5), market="US"),
+        ]
+    )
+    repo.upsert_ohlcv(df)
+    assert repo.get_min_last_date(["AAPL", "MSFT"]) == "2024-01-05"

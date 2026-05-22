@@ -195,6 +195,93 @@ class YFinanceSource(DataSource):
             return _empty_earnings(symbol)
 
 
+class YFinancePerSymbolSource(DataSource):
+    """Fallback source: per-symbol yf.Ticker.history() — different API path from yf.download().
+
+    yf.download() (batch) and Ticker.history() (per-symbol) hit different yfinance
+    code paths and can have independent failure modes, providing genuine redundancy.
+    Slower than the primary (one HTTP call per symbol) but requires no API key.
+    """
+
+    name = "yfinance_single"
+
+    def fetch_ohlcv(
+        self,
+        symbols: list[str],
+        start: date,
+        end: date,
+        market: str,
+    ) -> pl.DataFrame:
+        import pandas as pd
+        import yfinance as yf
+
+        frames = []
+        for sym in symbols:
+
+            def _fetch(s: str = sym) -> Any:
+                return yf.Ticker(s).history(
+                    start=start.isoformat(),
+                    end=end.isoformat(),
+                    auto_adjust=False,
+                )
+
+            try:
+                raw = self._retry(_fetch)
+                if raw is None or raw.empty:
+                    continue
+                sub = raw.reset_index().copy()
+                sub.columns = [str(c).lower().replace(" ", "_") for c in sub.columns]
+                if "adj_close" not in sub.columns and "close" in sub.columns:
+                    sub["adj_close"] = sub["close"]
+                sub["symbol"] = sym
+                sub["market"] = market
+                frames.append(_select_ohlcv_cols(sub))
+            except Exception as e:
+                logger.warning(f"yfinance_single: failed for {sym}: {e}")
+
+        if not frames:
+            return _empty_ohlcv()
+
+        combined = pd.concat(frames, ignore_index=True)
+        combined["date"] = pd.to_datetime(combined["date"]).dt.date
+        combined = combined.dropna(subset=["date", "close"])
+        combined["volume"] = combined["volume"].fillna(0).astype("int64")
+        combined = combined.drop_duplicates(subset=["symbol", "date"], keep="last")
+        return pl.from_pandas(combined).cast(OHLCV_SCHEMA)  # type: ignore[arg-type]
+
+    def fetch_fx(self, pair: str, start: date, end: date) -> pl.DataFrame:
+        import yfinance as yf
+
+        def _download() -> Any:
+            return yf.Ticker(pair).history(
+                start=start.isoformat(), end=end.isoformat(), auto_adjust=False
+            )
+
+        try:
+            raw = self._retry(_download)
+            if raw is None or raw.empty:
+                return pl.DataFrame({"date": [], "rate": []}).cast(
+                    {"date": pl.Date, "rate": pl.Float64}
+                )  # type: ignore[arg-type]
+            df = raw.reset_index()
+            df.columns = [str(c).lower() for c in df.columns]
+            import pandas as _pd
+
+            dates = _pd.to_datetime(df["date"]).dt.date.tolist()
+            rates = df["close"].tolist()
+            return pl.DataFrame({"date": dates, "rate": rates}).cast(
+                {"date": pl.Date, "rate": pl.Float64}
+            )  # type: ignore[arg-type]
+        except Exception as e:
+            logger.warning(f"yfinance_single: FX fetch failed: {e}")
+            return pl.DataFrame({"date": [], "rate": []}).cast(
+                {"date": pl.Date, "rate": pl.Float64}
+            )  # type: ignore[arg-type]
+
+    def fetch_earnings(self, symbol: str) -> pl.DataFrame:
+        return YFinanceSource().fetch_earnings(symbol)
+
+
 class StooqSource(DataSource):
     """Fallback data source using Stooq CSV API.
 
@@ -540,7 +627,7 @@ def _cross_check(primary: pl.DataFrame, fallback: pl.DataFrame, tolerance: float
             logger.warning(
                 f"Cross-check: {row['symbol']} on {row['date']}: "
                 f"primary={row['close']:.2f} fallback={row['close_fb']:.2f} "
-                f"divergence>{tolerance*100:.0f}%"
+                f"divergence>{tolerance * 100:.0f}%"
             )
 
 
@@ -574,6 +661,7 @@ def build_default_source(settings: Any | None = None) -> FallbackDataSource:
     cfg = settings.data.sources
     primary = YFinanceSource()
     fallback_map: dict[str, DataSource] = {
+        "yfinance_single": YFinancePerSymbolSource(),
         "stooq": StooqSource(),
         "jquants": JQuantsSource(),
         "alphavantage": AlphaVantageSource(),

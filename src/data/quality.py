@@ -11,7 +11,7 @@ from src.utils.logger import get_logger
 logger = get_logger()
 
 # Thresholds
-MAX_DAILY_RETURN = 0.50  # flag if abs daily return > 50%
+MAX_DAILY_RETURN = 0.30  # flag if abs daily return > 30%
 MIN_PRICE = 0.01  # flag if price < 1 yen / 1 cent
 
 

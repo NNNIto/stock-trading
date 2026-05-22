@@ -140,6 +140,10 @@ class Repository:
     def upsert_earnings(self, df: pl.DataFrame) -> int:
         if df.is_empty():
             return 0
+        # Drop rows with no report_date (placeholder rows from _empty_earnings())
+        df = df.filter(pl.col("report_date").is_not_null())
+        if df.is_empty():
+            return 0
         # Add surprise_pct column if missing (backward compat)
         if "surprise_pct" not in df.columns:
             df = df.with_columns(pl.lit(None).cast(pl.Float64).alias("surprise_pct"))
@@ -157,10 +161,9 @@ class Repository:
         return df.height
 
     def query_earnings(self, symbol: str) -> pl.DataFrame:
-        result = self._conn.execute(
+        return self._conn.execute(  # type: ignore[no-any-return]
             "SELECT * FROM earnings WHERE symbol = ? ORDER BY report_date", [symbol]
-        ).arrow()
-        return pl.from_arrow(result)  # type: ignore[return-value]
+        ).pl()
 
     # ── FX rates ─────────────────────────────────────────────────────────────
 
@@ -211,6 +214,16 @@ class Repository:
         self._conn.unregister("_univ_staging")
         return df.height
 
+    def query_universe(self, market: str | None = None) -> pl.DataFrame:
+        """Query universe table with optional market filter."""
+        if market:
+            result = self._conn.execute(
+                "SELECT * FROM universe WHERE market = ? ORDER BY symbol", [market]
+            ).arrow()
+        else:
+            result = self._conn.execute("SELECT * FROM universe ORDER BY symbol").arrow()
+        return pl.from_arrow(result)  # type: ignore[return-value]
+
     # ── Utility ───────────────────────────────────────────────────────────────
 
     def get_symbol_count(self) -> int:
@@ -224,3 +237,38 @@ class Repository:
         if row:
             return row[0], row[1]
         return None, None
+
+    def get_fx_last_date(self, pair: str) -> str | None:
+        """Return the last stored date for an FX pair, or None if no data exists."""
+        row = self._conn.execute(
+            "SELECT MAX(date)::VARCHAR FROM fx_rates WHERE pair = ?", [pair]
+        ).fetchone()
+        return str(row[0]) if row and row[0] is not None else None
+
+    def get_min_last_date(self, symbols: list[str]) -> str | None:
+        """Return the minimum of per-symbol max(date), or None if any symbol has no data.
+
+        Used by incremental update to find the earliest last-stored date across all
+        symbols, ensuring no symbol is left behind when fetching new data.
+        """
+        if not symbols:
+            return None
+        placeholders = ", ".join(["?" for _ in symbols])
+        row = self._conn.execute(
+            f"""
+            SELECT MIN(last_date)::VARCHAR, COUNT(*) AS n
+            FROM (
+                SELECT symbol, MAX(date) AS last_date
+                FROM ohlcv
+                WHERE symbol IN ({placeholders})
+                GROUP BY symbol
+            )
+            """,
+            symbols,
+        ).fetchone()
+        if row is None:
+            return None
+        min_date, n_with_data = row[0], row[1]
+        if n_with_data < len(symbols):
+            return None  # some symbols have no data → full historical load needed
+        return str(min_date) if min_date is not None else None

@@ -10,9 +10,11 @@ import pytest
 from src.data.fetcher import (
     DataSourceError,
     FallbackDataSource,
+    YFinancePerSymbolSource,
     YFinanceSource,
     _cross_check,
     _empty_ohlcv,
+    build_default_source,
 )
 
 # ── _empty_ohlcv ────────────────────────────────────────────────────────────
@@ -132,6 +134,29 @@ def test_fallback_fx_returns_empty_on_all_fail():
 
 
 # ── YFinanceSource retry ──────────────────────────────────────────────────────
+
+
+def test_yfinance_single_in_fallback_chain():
+    source = build_default_source()
+    fallback_names = [f.name for f in source._fallbacks]
+    assert "yfinance_single" in fallback_names
+    assert fallback_names.index("yfinance_single") == 0  # must be first fallback
+
+
+def test_yfinance_single_fallback_activates_on_primary_failure():
+    """Primary (batch) fails → YFinancePerSymbolSource takes over."""
+    primary = _FailingSource()
+    fallback = YFinancePerSymbolSource()
+
+    # Patch the internal _retry to return synthetic data without network call
+
+    def _patched_fetch_ohlcv(symbols, start, end, market):
+        return _make_ohlcv(symbol=symbols[0])
+
+    fallback.fetch_ohlcv = _patched_fetch_ohlcv  # type: ignore[method-assign]
+    fs = FallbackDataSource(primary, [fallback])
+    result = fs.fetch_ohlcv(["7203.T"], date(2024, 1, 1), date(2024, 1, 5), "JP")
+    assert not result.is_empty()
 
 
 def test_yfinance_retry_gives_up_after_max_attempts():
