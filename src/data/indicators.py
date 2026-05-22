@@ -69,7 +69,10 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["vol_ratio_20"] = volume / pdf["vol_ma_20"]
 
     pdf = pdf.reset_index()
-    return _to_polars(pdf)
+    result = _to_polars(pdf)
+    if "date" in result.columns and result["date"].dtype != pl.Date:
+        result = result.with_columns(pl.col("date").cast(pl.Date))
+    return result
 
 
 def add_indicators_batch(df: pl.DataFrame) -> pl.DataFrame:
