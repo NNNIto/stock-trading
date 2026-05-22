@@ -68,8 +68,12 @@ class PortfolioManager:
 
     def get_open_positions(self, mode: str | None = None) -> pl.DataFrame:
         """Return all open positions, optionally filtered by mode."""
-        where = f"WHERE mode = '{mode}'" if mode else ""
-        rows = self._conn.execute(f"SELECT * FROM positions {where} ORDER BY entry_date").fetchall()
+        if mode:
+            rows = self._conn.execute(
+                "SELECT * FROM positions WHERE mode = ? ORDER BY entry_date", [mode]
+            ).fetchall()
+        else:
+            rows = self._conn.execute("SELECT * FROM positions ORDER BY entry_date").fetchall()
         if not rows:
             return pl.DataFrame()
         cols = [d[0] for d in self._conn.description or []]

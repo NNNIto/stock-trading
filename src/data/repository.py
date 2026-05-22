@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -276,3 +277,65 @@ class Repository:
         if n_with_data < len(symbols):
             return None  # some symbols have no data → full historical load needed
         return str(min_date) if min_date is not None else None
+
+    # ── Signals ───────────────────────────────────────────────────────────────
+
+    def ensure_signals_table(self) -> None:
+        """Create signals table if it does not exist."""
+        self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS signals (
+                signal_id            VARCHAR PRIMARY KEY,
+                generated_at         TIMESTAMP NOT NULL,
+                scenario_id          VARCHAR NOT NULL,
+                scenario_version     VARCHAR NOT NULL,
+                symbol               VARCHAR NOT NULL,
+                action               VARCHAR NOT NULL,
+                signal_date          DATE NOT NULL,
+                expected_entry_price DOUBLE,
+                metadata             JSON,
+                UNIQUE (symbol, signal_date, scenario_id, action)
+            )
+        """)
+
+    def signals_exist_for_date(self, signal_date: date) -> bool:
+        """Return True if any signal already exists for the given date."""
+        try:
+            row = self._conn.execute(
+                "SELECT COUNT(*) FROM signals WHERE signal_date = ?", [signal_date]
+            ).fetchone()
+            return bool(row and row[0] > 0)
+        except Exception:
+            return False
+
+    def upsert_signal(
+        self,
+        signal_id: str,
+        scenario_id: str,
+        scenario_version: str,
+        symbol: str,
+        action: str,
+        signal_date: date,
+        expected_entry_price: float | None,
+    ) -> None:
+        """Insert a single signal row; ignore on conflict."""
+        from datetime import datetime
+
+        self._conn.execute(
+            """
+            INSERT INTO signals
+              (signal_id, generated_at, scenario_id, scenario_version,
+               symbol, action, signal_date, expected_entry_price, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}')
+            ON CONFLICT DO NOTHING
+            """,
+            [
+                signal_id,
+                datetime.now().isoformat(),
+                scenario_id,
+                scenario_version,
+                symbol,
+                action,
+                signal_date,
+                expected_entry_price,
+            ],
+        )
