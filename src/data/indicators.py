@@ -25,8 +25,9 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     Input must have columns: date, open, high, low, close, adj_close, volume.
     Output adds indicator columns; rows with insufficient history will have nulls.
 
-    'close' is overwritten with adj_close so that all price comparisons downstream
-    (MA crossovers, stop-loss checks, etc.) operate on a consistent adjusted basis.
+    All OHLC columns are overwritten with split/dividend-adjusted values so that every
+    downstream price comparison (gap_up, stop-loss, MA crossovers, ATR) operates on a
+    consistent adjusted basis. Volume is kept as raw share count (not adjusted).
     """
     if df.is_empty() or df.height < 5:
         return df
@@ -37,18 +38,20 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
 
     raw_close = pdf["close"]
     adj_close = pdf["adj_close"] if "adj_close" in pdf.columns else pdf["close"]
-    high = pdf["high"]
-    low = pdf["low"]
     volume = pdf["volume"]
 
-    # Adjustment ratio: scale raw OHLC prices to the split/dividend-adjusted basis.
-    # Where raw_close is 0 (shouldn't happen for valid data), fall back to ratio=1.
+    # Normalize all OHLC columns to the split/dividend-adjusted basis so that every
+    # price comparison downstream (gap_up, stop-loss, MA crossovers, ATR) is consistent.
+    # Where raw_close is 0 (degenerate data), adj_ratio falls back to 1.0.
     adj_ratio = (adj_close / raw_close).replace([float("inf"), float("-inf")], 1.0).fillna(1.0)
-    adj_high = high * adj_ratio
-
-    # Normalize close to adj_close so scenarios compare prices on the same adjusted scale.
+    pdf["open"] = pdf["open"] * adj_ratio
+    pdf["high"] = pdf["high"] * adj_ratio
+    pdf["low"] = pdf["low"] * adj_ratio
     pdf["close"] = adj_close
-    close = adj_close
+
+    close = pdf["close"]
+    high = pdf["high"]
+    low = pdf["low"]
 
     # Moving averages
     pdf["ma_20"] = ta.sma(close, length=20)
@@ -64,7 +67,7 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["rsi_14"] = ta.rsi(close, length=14)
     pdf["rsi_2"] = ta.rsi(close, length=2)
 
-    # ATR
+    # ATR (uses adjusted high/low/close for scale consistency)
     atr_df = ta.atr(high, low, close, length=14)
     pdf["atr_14"] = atr_df
 
@@ -76,9 +79,7 @@ def add_indicators(df: pl.DataFrame) -> pl.DataFrame:
     pdf["ret_6m"] = close.pct_change(126)
 
     # 52-week (252 day) high of adjusted daily high prices.
-    # Using actual intraday highs (scaled by adj_ratio) rather than adj_close rolling max
-    # to correctly identify breakout levels as seen on adjusted-price charts.
-    pdf["high_252d"] = adj_high.rolling(252).max()
+    pdf["high_252d"] = high.rolling(252).max()
 
     # Volume ratio vs 20-day average
     pdf["vol_ratio_20"] = volume / pdf["vol_ma_20"]

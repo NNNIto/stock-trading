@@ -93,8 +93,8 @@ def test_add_indicators_52w_high():
     assert last_row["high_252d"][0] == pytest.approx(last_row["adj_close"][0] * 1.01, rel=1e-3)
 
 
-def test_close_normalized_to_adj_close():
-    """add_indicators overwrites close with adj_close for consistent downstream comparisons."""
+def test_ohlc_normalized_to_adjusted_prices():
+    """add_indicators normalizes all OHLC columns to adj_close basis for consistency."""
     n = 300
     dates = [date(2022, 1, 1) + timedelta(days=i) for i in range(n)]
     raw_prices = [100.0 + i * 0.1 for i in range(n)]
@@ -114,7 +114,16 @@ def test_close_normalized_to_adj_close():
     )
     result = add_indicators(df)
     non_null = result.filter(pl.col("close").is_not_null())
+    # close must equal adj_close
     assert (non_null["close"] == non_null["adj_close"]).all()
+    # open/high/low must also be scaled by adj_ratio (0.5 in this test)
+    assert result["open"].drop_nulls().to_list()[0] == pytest.approx(raw_prices[0] * 0.5, rel=1e-6)
+    assert result["high"].drop_nulls().to_list()[0] == pytest.approx(
+        raw_prices[0] * 1.01 * 0.5, rel=1e-6
+    )
+    assert result["low"].drop_nulls().to_list()[0] == pytest.approx(
+        raw_prices[0] * 0.99 * 0.5, rel=1e-6
+    )
 
 
 def test_high_252d_uses_adjusted_high():
