@@ -13,6 +13,14 @@ parameters:
   trend_exit_ma_days: 20        # トレンド転換判定MA
   time_exit_days: 180           # 時間切れ（営業日）
 
+# Grid search candidates for walk-forward optimisation.
+# Keys must match parameter names; values are the candidate list.
+# Only listed parameters are varied; unlisted ones keep their current value.
+parameter_grid:
+  high_lookback_days: [126, 252, 504]
+  stop_loss_pct: [-0.05, -0.08, -0.10]
+  trailing_stop_pct: [-0.10, -0.15, -0.20]
+
 change_log:
   - version: "1.0.0"
     date: "2026-05-20"

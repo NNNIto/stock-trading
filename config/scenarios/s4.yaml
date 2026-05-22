@@ -19,6 +19,11 @@ parameters:
   # fallback: gap+volume only when eps data unavailable
   use_eps_filter: true          # false=ギャップ+出来高のみの簡易版
 
+parameter_grid:
+  gap_up_pct: [0.01, 0.02, 0.03]
+  stop_loss_pct: [-0.07, -0.10, -0.15]
+  take_profit_pct: [0.15, 0.25, 0.30]
+
 change_log:
   - version: "1.0.0"
     date: "2026-05-20"
