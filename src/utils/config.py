@@ -62,6 +62,13 @@ class NotificationConfig(BaseModel):
     alert_on: list[str] = Field(default_factory=lambda: ["new_signal"])
 
 
+class UniverseFilterConfig(BaseModel):
+    enabled: bool = True
+    jp_top_n: int = 100
+    us_top_n: int = 150
+    lookback_years: int = 3
+
+
 class ProjectConfig(BaseModel):
     name: str = "stock-trading"
     capital_jpy: int = 3_000_000
@@ -75,6 +82,7 @@ class Settings(BaseModel):
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)
     data: DataConfig = Field(default_factory=DataConfig)
     notification: NotificationConfig = Field(default_factory=NotificationConfig)
+    universe_filter: UniverseFilterConfig = Field(default_factory=UniverseFilterConfig)
 
 
 def load_settings(config_path: Path | str | None = None) -> Settings:

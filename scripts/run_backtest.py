@@ -29,11 +29,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import polars as pl
 
-from src.backtest.engine import BacktestEngine
+from src.backtest.engine import BacktestEngine, MacroFilter
 from src.backtest.execution import ExecutionConfig
 from src.backtest.metrics import compute_metrics, format_metrics
 from src.data.indicators import add_indicators_batch
 from src.data.repository import Repository
+from src.data.universe import get_liquid_symbols
 from src.portfolio.sizer import build_sizer
 from src.scenarios.s2_breakout import S2Breakout
 from src.scenarios.s3_pullback import S3Pullback
@@ -56,6 +57,28 @@ def _git_hash() -> str:
         return "unknown"
 
 
+def _resolve_symbols(
+    symbols: list[str] | None,
+    market: str | None,
+    start: date,
+) -> list[str] | None:
+    """Apply liquidity filter when no explicit symbols are given."""
+    settings = get_settings()
+    uf = settings.universe_filter
+    if symbols or not uf.enabled:
+        return symbols
+
+    markets = ["JP", "US"] if market is None else [market.upper()]
+    result: list[str] = []
+    with Repository() as repo:
+        for mkt in markets:
+            n_top = uf.jp_top_n if mkt == "JP" else uf.us_top_n
+            selected = get_liquid_symbols(repo, mkt, n_top, start, uf.lookback_years)
+            result.extend(selected)
+            logger.info(f"universe filter: {mkt} → {len(selected)} liquid symbols (top {n_top})")
+    return result or None
+
+
 def _load_data(
     symbols: list[str] | None,
     market: str | None,
@@ -76,6 +99,47 @@ def _load_data(
     return add_indicators_batch(df)
 
 
+def _build_index_ma_filter(start: date, end: date) -> MacroFilter:
+    """Fetch market index data and compute 200MA above/below flag per date."""
+    import yfinance as yf
+
+    index_map = {"JP": "^N225", "US": "SPY"}
+    result: dict[str, dict[date, bool]] = {"JP": {}, "US": {}}
+
+    # Fetch 200 extra days before start to warm up the MA
+    fetch_start = date(start.year - 1, start.month, start.day)
+
+    for market, ticker in index_map.items():
+        try:
+            raw = yf.download(
+                ticker,
+                start=fetch_start.isoformat(),
+                end=end.isoformat(),
+                progress=False,
+                auto_adjust=True,
+            )
+            if raw.empty:
+                logger.warning(f"index MA filter: no data for {ticker}, skipping")
+                continue
+            close = raw["Close"].squeeze()
+            ma200 = close.rolling(200).mean()
+            above = (close > ma200).dropna()
+            result[market] = {
+                d.date(): bool(v) for d, v in above.items() if start <= d.date() <= end
+            }
+            n_blocked = sum(1 for v in result[market].values() if not v)
+            logger.info(
+                f"index MA filter: {ticker} — {n_blocked}/{len(result[market])} days blocked"
+            )
+        except Exception as e:
+            logger.warning(f"index MA filter: failed to fetch {ticker}: {e}")
+
+    return MacroFilter(
+        jp_index_above_ma200=result["JP"],
+        us_index_above_ma200=result["US"],
+    )
+
+
 def run(
     start: date,
     end: date,
@@ -93,6 +157,7 @@ def run(
 
     scenarios = [S2Breakout(), S3Pullback(), S4PEAD(), S6Reversion()]
     sizer = build_sizer(settings)
+    macro_filter = _build_index_ma_filter(start, end)
 
     engine = BacktestEngine(
         scenarios=scenarios,
@@ -101,8 +166,10 @@ def run(
         initial_capital=capital,
         max_positions=settings.risk.max_positions,
         random_seed=settings.backtest.random_seed,
+        macro_filter=macro_filter,
     )
 
+    symbols = _resolve_symbols(symbols, market, start)
     data = _load_data(symbols, market, start.isoformat(), end.isoformat())
     result = engine.run(data, start, end)
     metrics = compute_metrics(

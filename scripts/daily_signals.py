@@ -34,6 +34,7 @@ import polars as pl
 
 from src.data.indicators import add_indicators_batch
 from src.data.repository import Repository
+from src.data.universe import get_liquid_symbols
 from src.notification.slack import (
     notify_daily_summary,
     notify_error,
@@ -60,11 +61,28 @@ _SCENARIO_PRIORITY: dict[str, int] = {"S6": 0, "S3": 1, "S2": 2, "S4": 3}
 # ── Data loading ──────────────────────────────────────────────────────────────
 
 
+def _get_liquid_symbols(signal_date: date) -> list[str] | None:
+    """Return liquidity-filtered symbol list; None if filter disabled."""
+    from src.utils.config import get_settings
+
+    uf = get_settings().universe_filter
+    if not uf.enabled:
+        return None
+    result: list[str] = []
+    with Repository() as repo:
+        for mkt, n_top in [("JP", uf.jp_top_n), ("US", uf.us_top_n)]:
+            selected = get_liquid_symbols(repo, mkt, n_top, signal_date, uf.lookback_years)
+            result.extend(selected)
+    logger.info(f"universe filter: {len(result)} liquid symbols selected")
+    return result or None
+
+
 def _load_recent_data(signal_date: date) -> pl.DataFrame:
     """Load OHLCV from DB + compute indicators; return empty DF if no data."""
     start = signal_date - timedelta(days=_LOOKBACK_DAYS)
+    symbols = _get_liquid_symbols(signal_date)
     with Repository() as repo:
-        df = repo.query_ohlcv(start=start.isoformat(), end=signal_date.isoformat())
+        df = repo.query_ohlcv(symbols=symbols, start=start.isoformat(), end=signal_date.isoformat())
     if df.is_empty():
         logger.warning("daily_signals: no OHLCV data found in DB")
         return df

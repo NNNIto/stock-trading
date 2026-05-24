@@ -118,6 +118,9 @@ class MacroFilter:
 
     Pass vix_data / nikkei_data as {date: float} dicts.  If a series is
     absent the corresponding filter is silently skipped.
+
+    Pass jp_index_above_ma200 / us_index_above_ma200 as {date: bool} dicts
+    to enable a market-specific trend filter (block entries when index < 200MA).
     """
 
     def __init__(
@@ -127,12 +130,16 @@ class MacroFilter:
         blackout_dates: set[date] | None = None,
         vix_data: dict[date, float] | None = None,
         nikkei_data: dict[date, float] | None = None,
+        jp_index_above_ma200: dict[date, bool] | None = None,
+        us_index_above_ma200: dict[date, bool] | None = None,
     ) -> None:
         self.vix_threshold = vix_threshold
         self.nikkei_drawdown_threshold = nikkei_drawdown_threshold
         self.blackout_dates: set[date] = blackout_dates or set()
         self.vix_data = vix_data or {}
         self.nikkei_data = nikkei_data or {}
+        self.jp_index_above_ma200 = jp_index_above_ma200 or {}
+        self.us_index_above_ma200 = us_index_above_ma200 or {}
         self._nikkei_prev: dict[date, float] = {}
 
     def is_entry_blocked(self, current_date: date) -> bool:
@@ -151,6 +158,20 @@ class MacroFilter:
                 if daily_ret < self.nikkei_drawdown_threshold:
                     logger.debug(f"macro: entry blocked on {current_date} (Nikkei {daily_ret:.1%})")
                     return True
+        return False
+
+    def is_market_blocked(self, current_date: date, market: str) -> bool:
+        """Return True when the market index is below its 200-day MA."""
+        if market == "JP" and self.jp_index_above_ma200:
+            above = self.jp_index_above_ma200.get(current_date)
+            if above is not None and not above:
+                logger.debug(f"macro: JP entry blocked on {current_date} (index < 200MA)")
+                return True
+        if market == "US" and self.us_index_above_ma200:
+            above = self.us_index_above_ma200.get(current_date)
+            if above is not None and not above:
+                logger.debug(f"macro: US entry blocked on {current_date} (index < 200MA)")
+                return True
         return False
 
     def update(self, current_date: date) -> None:
@@ -369,7 +390,12 @@ class BacktestEngine:
 
             # ── Generate entry signals → queue buys ─────────────────────────
             if not self.macro_filter.is_entry_blocked(current_date):
-                day_signals = signals_by_date.get(current_date, [])
+                all_signals = signals_by_date.get(current_date, [])
+                day_signals = [
+                    s
+                    for s in all_signals
+                    if not self.macro_filter.is_market_blocked(current_date, s.market)
+                ]
                 new_entries, forced_sells = self._resolve_conflicts(
                     day_signals,
                     open_positions,

@@ -1,6 +1,6 @@
 scenario_id: S3
 name: "押し目買い（RSI＋トレンド）"
-enabled: true
+enabled: false
 version: "1.0.0"
 
 parameters:

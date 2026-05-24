@@ -13,8 +13,12 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
+
+if TYPE_CHECKING:
+    from src.data.repository import Repository
 
 _UNIVERSE_DIR = Path(__file__).parent.parent.parent / "config" / "universe"
 
@@ -84,6 +88,26 @@ def get_all_symbols(as_of: date | None = None) -> list[str]:
     """Return all symbols across JP and US markets."""
     df = load_all_symbols(as_of=as_of)
     return df["symbol"].to_list()
+
+
+def get_liquid_symbols(
+    repo: Repository,
+    market: str,
+    n_top: int,
+    reference_date: date,
+    lookback_years: int = 3,
+) -> list[str]:
+    """Return top n_top symbols by average daily trading value before reference_date.
+
+    Delegates to Repository.query_liquid_symbols().  Passing the backtest start
+    date as reference_date ensures zero look-ahead bias in universe selection.
+    """
+    return repo.query_liquid_symbols(
+        market=market,
+        n_top=n_top,
+        reference_date=reference_date,
+        lookback_years=lookback_years,
+    )
 
 
 def normalize_symbol(symbol: str, market: str) -> str:

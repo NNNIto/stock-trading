@@ -405,20 +405,95 @@ class StooqSource(DataSource):
 
 
 class JQuantsSource(DataSource):
-    """Stub for J-Quants (Japan market, requires registration)."""
+    """J-Quants V2 data source (Japan market, earnings only)."""
 
     name = "jquants"
 
+    def _client(self) -> Any:
+        import jquantsapi
+
+        return jquantsapi.ClientV2()
+
     def fetch_ohlcv(self, symbols: list[str], start: date, end: date, market: str) -> pl.DataFrame:
-        # TODO: implement using jquants-api-client after registration
-        raise NotImplementedError("J-Quants requires account registration")
+        raise NotImplementedError("J-Quants OHLCV not implemented; use YFinance/Stooq")
 
     def fetch_fx(self, pair: str, start: date, end: date) -> pl.DataFrame:
         raise NotImplementedError("J-Quants does not provide FX data")
 
     def fetch_earnings(self, symbol: str) -> pl.DataFrame:
-        # TODO: J-Quants provides earnings via /fins/statements endpoint
-        raise NotImplementedError("J-Quants earnings not yet implemented")
+        """Fetch earnings from J-Quants /fins/summary (annual periods only).
+
+        symbol must be a 4-digit JP code (e.g. '7203').
+        Returns rows with: symbol, report_date, eps_actual, eps_estimate, surprise_pct.
+
+        Surprise is computed as: current FY EPS vs. prior FY's NxFEPS (next-year forecast),
+        which is the standard PEAD estimate for Japanese annual reports.
+        """
+        # J-Quants uses 5-digit codes (4-digit + '0'); handle both.
+        code = symbol.replace(".T", "")
+        if len(code) == 4:
+            code = code + "0"
+
+        try:
+            cli = self._client()
+            raw = cli.get_fin_summary(code=code)
+        except Exception as e:
+            logger.warning(f"jquants: fetch_earnings failed for {symbol}: {e}")
+            return _empty_earnings(symbol)
+
+        if raw.empty:
+            return _empty_earnings(symbol)
+
+        # Keep only annual (FY) periods
+        fy_mask = (
+            raw["CurPerType"].isin(["Annual", "FY"])
+            if "CurPerType" in raw.columns
+            else [True] * len(raw)
+        )
+        df_fy = raw[fy_mask].reset_index(drop=True)
+
+        if df_fy.empty:
+            df_fy = raw.reset_index(drop=True)
+
+        # Estimate = prior FY's NxFEPS (next-year forecast issued at prior annual announcement)
+        prior_nxfeps = df_fy["NxFEPS"].shift(1) if "NxFEPS" in df_fy.columns else None
+
+        records = []
+        for i, row in df_fy.iterrows():
+            try:
+                report_date = date.fromisoformat(str(row["DiscDate"])[:10])
+            except (ValueError, KeyError):
+                continue
+
+            eps_actual = _to_float(row.get("EPS"))
+            eps_estimate = _to_float(prior_nxfeps.iloc[i]) if prior_nxfeps is not None else None  # type: ignore[union-attr]
+
+            if eps_actual is not None and eps_estimate is not None and eps_estimate != 0:
+                surprise_pct = (eps_actual - eps_estimate) / abs(eps_estimate)
+            else:
+                surprise_pct = None
+
+            records.append(
+                {
+                    "symbol": symbol,
+                    "report_date": report_date,
+                    "eps_actual": eps_actual,
+                    "eps_estimate": eps_estimate,
+                    "surprise_pct": surprise_pct,
+                }
+            )
+
+        if not records:
+            return _empty_earnings(symbol)
+
+        return pl.DataFrame(records).cast(  # type: ignore[arg-type]
+            {
+                "report_date": pl.Date,
+                "eps_actual": pl.Float64,
+                "eps_estimate": pl.Float64,
+                "surprise_pct": pl.Float64,
+            }
+        )
 
 
 class AlphaVantageSource(DataSource):
@@ -517,6 +592,16 @@ class FallbackDataSource:
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
+
+def _to_float(val: Any) -> float | None:
+    """Convert a value to float, returning None for missing/empty values."""
+    try:
+        if val is None or (isinstance(val, float) and val != val):  # NaN check
+            return None
+        return float(val) if str(val).strip() != "" else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _empty_ohlcv() -> pl.DataFrame:

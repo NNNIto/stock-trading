@@ -242,3 +242,42 @@ def test_get_min_last_date_returns_earliest(repo):
     )
     repo.upsert_ohlcv(df)
     assert repo.get_min_last_date(["AAPL", "MSFT"]) == "2024-01-05"
+
+
+def test_query_liquid_symbols_returns_top_n(repo):
+    """query_liquid_symbols returns symbols ranked by avg daily trading value."""
+    from datetime import timedelta
+
+    # Insert 3 US symbols with different avg daily values over 90 days
+    rows = []
+    base = date(2021, 1, 4)
+    for i in range(90):
+        d = base + timedelta(days=i)
+        rows.append({**_ohlcv_row("HIGH", d, "US"), "close": 200.0, "volume": 10_000_000})
+        rows.append({**_ohlcv_row("MID", d, "US"), "close": 100.0, "volume": 5_000_000})
+        rows.append({**_ohlcv_row("LOW", d, "US"), "close": 10.0, "volume": 1_000_000})
+    repo.upsert_ohlcv(pl.DataFrame(rows))
+
+    reference = date(2022, 1, 1)
+    result = repo.query_liquid_symbols("US", n_top=2, reference_date=reference)
+
+    assert result == ["HIGH", "MID"]
+
+
+def test_query_liquid_symbols_excludes_lookahead(repo):
+    """Symbols with data only after reference_date must not appear."""
+    from datetime import timedelta
+
+    base = date(2021, 1, 4)
+    rows_before = [{**_ohlcv_row("OLD", base + timedelta(days=i), "US")} for i in range(90)]
+    # FUTURE has data only after the reference date
+    rows_after = [
+        {**_ohlcv_row("FUTURE", date(2022, 2, 1) + timedelta(days=i), "US")} for i in range(90)
+    ]
+    repo.upsert_ohlcv(pl.DataFrame(rows_before + rows_after))
+
+    reference = date(2022, 1, 1)
+    result = repo.query_liquid_symbols("US", n_top=10, reference_date=reference)
+
+    assert "FUTURE" not in result
+    assert "OLD" in result

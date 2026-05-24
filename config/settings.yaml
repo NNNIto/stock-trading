@@ -47,3 +47,9 @@ notification:
     - new_signal
     - stop_loss_triggered
     - circuit_breaker
+
+universe_filter:
+  enabled: true
+  jp_top_n: 100     # 日経225から流動性上位100銘柄
+  us_top_n: 150     # S&P500から流動性上位150銘柄
+  lookback_years: 3 # バックテスト開始前3年の平均売買代金で選択（先読みバイアス回避）

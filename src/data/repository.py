@@ -278,6 +278,41 @@ class Repository:
             return None  # some symbols have no data → full historical load needed
         return str(min_date) if min_date is not None else None
 
+    def query_liquid_symbols(
+        self,
+        market: str,
+        n_top: int,
+        reference_date: date,
+        lookback_years: int = 3,
+    ) -> list[str]:
+        """Return top n_top symbols by avg daily trading value before reference_date.
+
+        Uses only data in [reference_date - lookback_years, reference_date) so the
+        selection is free of look-ahead bias when called with the backtest start date.
+        Symbols with fewer than 60 trading days in the window are excluded.
+        """
+
+        window_start = date(
+            reference_date.year - lookback_years,
+            reference_date.month,
+            reference_date.day,
+        )
+        rows = self._conn.execute(
+            """
+            SELECT symbol
+            FROM ohlcv
+            WHERE market = ?
+              AND date >= ?
+              AND date < ?
+            GROUP BY symbol
+            HAVING COUNT(*) >= 60
+            ORDER BY AVG(close * volume) DESC
+            LIMIT ?
+            """,
+            [market, window_start.isoformat(), reference_date.isoformat(), n_top],
+        ).fetchall()
+        return [r[0] for r in rows]
+
     # ── Signals ───────────────────────────────────────────────────────────────
 
     def ensure_signals_table(self) -> None:

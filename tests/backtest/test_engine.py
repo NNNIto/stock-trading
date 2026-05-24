@@ -295,3 +295,33 @@ def test_open_positions_at_end_included_in_trades():
     eob_trades = result.trades.filter(pl.col("exit_reason") == "end_of_backtest")
     assert not eob_trades.is_empty()
     assert eob_trades["symbol"][0] == "AAPL"
+
+
+def test_macro_filter_index_ma_blocks_by_market():
+    """is_market_blocked blocks entries only for the specified market."""
+    start = date(2024, 1, 2)
+    scenario = _StubScenario(buy_signals={("AAPL", start)})
+    data = _make_data(["AAPL"], start, n_days=10, market="US")
+
+    # US index is below 200MA on every day → US entries should be blocked
+    us_blocked = {start + timedelta(days=i): False for i in range(10)}
+    macro = MacroFilter(us_index_above_ma200=us_blocked)
+    engine = _make_engine(scenario=scenario, macro_filter=macro)
+    result = engine.run(data, start_date=start, end_date=start + timedelta(days=9))
+
+    assert result.trades.is_empty()
+
+
+def test_macro_filter_index_ma_does_not_block_other_market():
+    """JP index block must not affect US entries."""
+    start = date(2024, 1, 2)
+    scenario = _StubScenario(buy_signals={("AAPL", start)})
+    data = _make_data(["AAPL"], start, n_days=10, market="US")
+
+    # JP blocked, US not set → US entries allowed
+    jp_blocked = {start + timedelta(days=i): False for i in range(10)}
+    macro = MacroFilter(jp_index_above_ma200=jp_blocked)
+    engine = _make_engine(scenario=scenario, macro_filter=macro)
+    result = engine.run(data, start_date=start, end_date=start + timedelta(days=9))
+
+    assert not result.trades.is_empty()

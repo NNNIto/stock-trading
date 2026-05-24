@@ -33,6 +33,7 @@ from src.backtest.execution import ExecutionConfig
 from src.backtest.walkforward import WalkForwardResult, WalkForwardRunner
 from src.data.indicators import add_indicators_batch
 from src.data.repository import Repository
+from src.data.universe import get_liquid_symbols
 from src.portfolio.sizer import build_sizer
 from src.scenarios.s2_breakout import S2Breakout
 from src.scenarios.s3_pullback import S3Pullback
@@ -53,6 +54,28 @@ def _git_hash() -> str:
         return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
     except Exception:
         return "unknown"
+
+
+def _resolve_symbols(
+    symbols: list[str] | None,
+    market: str | None,
+    start: date,
+) -> list[str] | None:
+    """Apply liquidity filter when no explicit symbols are given."""
+    settings = get_settings()
+    uf = settings.universe_filter
+    if symbols or not uf.enabled:
+        return symbols
+
+    markets = ["JP", "US"] if market is None else [market.upper()]
+    result: list[str] = []
+    with Repository() as repo:
+        for mkt in markets:
+            n_top = uf.jp_top_n if mkt == "JP" else uf.us_top_n
+            selected = get_liquid_symbols(repo, mkt, n_top, start, uf.lookback_years)
+            result.extend(selected)
+            logger.info(f"universe filter: {mkt} → {len(selected)} liquid symbols (top {n_top})")
+    return result or None
 
 
 def _load_data(
@@ -121,6 +144,7 @@ def run(
         random_seed=settings.backtest.random_seed,
     )
 
+    symbols = _resolve_symbols(symbols, market, is_start)
     data = _load_data(symbols, market, is_start.isoformat(), is_end.isoformat())
     result = runner.run(data, is_start, is_end)
 
