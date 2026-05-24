@@ -36,7 +36,8 @@ data:
     primary: yfinance
     fallback_order:
       - yfinance_single
-      - stooq  # requires STOOQ_API_KEY; skipped when unset
+      - stooq    # requires STOOQ_API_KEY; skipped when unset
+      - jquants  # JP earnings only; requires JQUANTS_API_KEY
     retry_attempts: 3
     cross_check_tolerance_pct: 0.02
     cross_check_enabled: true

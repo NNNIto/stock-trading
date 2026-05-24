@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import polars as pl
 
+from src.backtest.engine import MacroFilter
 from src.backtest.execution import ExecutionConfig
 from src.backtest.walkforward import WalkForwardResult, WalkForwardRunner
 from src.data.indicators import add_indicators_batch
@@ -76,6 +77,40 @@ def _resolve_symbols(
             result.extend(selected)
             logger.info(f"universe filter: {mkt} → {len(selected)} liquid symbols (top {n_top})")
     return result or None
+
+
+def _build_index_ma_filter(start: date, end: date) -> MacroFilter:
+    """Fetch market index data and compute 200MA above/below flag per date."""
+    import yfinance as yf
+
+    index_map = {"JP": "^N225", "US": "SPY"}
+    result: dict[str, dict[date, bool]] = {"JP": {}, "US": {}}
+    fetch_start = date(start.year - 1, start.month, start.day)
+
+    for market, ticker in index_map.items():
+        try:
+            raw = yf.download(
+                ticker,
+                start=fetch_start.isoformat(),
+                end=end.isoformat(),
+                progress=False,
+                auto_adjust=True,
+            )
+            if raw.empty:
+                continue
+            close = raw["Close"].squeeze()
+            ma200 = close.rolling(200).mean()
+            above = (close > ma200).dropna()
+            result[market] = {
+                d.date(): bool(v) for d, v in above.items() if start <= d.date() <= end
+            }
+        except Exception as e:
+            logger.warning(f"index MA filter: failed to fetch {ticker}: {e}")
+
+    return MacroFilter(
+        jp_index_above_ma200=result["JP"],
+        us_index_above_ma200=result["US"],
+    )
 
 
 def _load_data(
@@ -131,6 +166,7 @@ def run(
     )
     scenarios = [S2Breakout(), S3Pullback(), S4PEAD(), S6Reversion()]
     sizer = build_sizer(settings)
+    macro_filter = _build_index_ma_filter(is_start, is_end)
 
     runner = WalkForwardRunner(
         scenarios=scenarios,
@@ -142,6 +178,7 @@ def run(
         step_months=settings.backtest.walkforward_step_months,
         max_positions=settings.risk.max_positions,
         random_seed=settings.backtest.random_seed,
+        macro_filter=macro_filter,
     )
 
     symbols = _resolve_symbols(symbols, market, is_start)

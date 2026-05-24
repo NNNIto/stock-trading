@@ -410,9 +410,14 @@ class JQuantsSource(DataSource):
     name = "jquants"
 
     def _client(self) -> Any:
-        import jquantsapi
+        import os
 
-        return jquantsapi.ClientV2()
+        import jquantsapi
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        api_key = os.getenv("JQUANTS_API_KEY")
+        return jquantsapi.ClientV2(api_key=api_key)
 
     def fetch_ohlcv(self, symbols: list[str], start: date, end: date, market: str) -> pl.DataFrame:
         raise NotImplementedError("J-Quants OHLCV not implemented; use YFinance/Stooq")
@@ -435,7 +440,10 @@ class JQuantsSource(DataSource):
             code = code + "0"
 
         try:
+            import time
+
             cli = self._client()
+            time.sleep(2.0)  # J-Quants free tier rate limit（tenancy retries込みで2秒必要）
             raw = cli.get_fin_summary(code=code)
         except Exception as e:
             logger.warning(f"jquants: fetch_earnings failed for {symbol}: {e}")
@@ -588,6 +596,12 @@ class FallbackDataSource:
         return pl.DataFrame({"date": [], "rate": []}).cast({"date": pl.Date, "rate": pl.Float64})  # type: ignore[arg-type]
 
     def fetch_earnings(self, symbol: str) -> pl.DataFrame:
+        # JP symbols (.T suffix or 4-digit codes) → J-Quants; others → primary
+        is_jp = symbol.endswith(".T") or (symbol.isdigit() and len(symbol) <= 5)
+        if is_jp:
+            jquants = next((s for s in self._fallbacks if isinstance(s, JQuantsSource)), None)
+            if jquants is not None:
+                return jquants.fetch_earnings(symbol)
         return self._primary.fetch_earnings(symbol)
 
 
