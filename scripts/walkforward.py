@@ -121,13 +121,24 @@ def _load_data(
 ) -> pl.DataFrame:
     with Repository() as repo:
         df = repo.query_ohlcv(symbols=symbols, market=market, start=start, end=end)
-
-    if df.is_empty():
-        logger.error("No OHLCV data found. Run scripts/data_update.py to populate the database.")
-        sys.exit(1)
+        if df.is_empty():
+            logger.error(
+                "No OHLCV data found. Run scripts/data_update.py to populate the database."
+            )
+            sys.exit(1)
+        syms = df["symbol"].unique().to_list()
+        earnings = repo.query_earnings_batch(symbols=syms, start=start, end=end)
 
     logger.info(f"Loaded {df.height} rows for {df['symbol'].n_unique()} symbols")
-    return add_indicators_batch(df)
+    data = add_indicators_batch(df)
+    if not earnings.is_empty():
+        data = data.join(earnings, on=["symbol", "date"], how="left").with_columns(
+            pl.col("is_earnings_day").fill_null(False)
+        )
+        logger.info(f"Merged {earnings.height} earnings rows for S4 signals")
+    else:
+        data = data.with_columns(pl.lit(False).alias("is_earnings_day"))
+    return data
 
 
 def _print_window_table(result: WalkForwardResult) -> None:

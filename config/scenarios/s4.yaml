@@ -1,18 +1,18 @@
 scenario_id: S4
 name: "決算後ドリフト（PEAD）"
 enabled: true
-version: "1.0.0"
+version: "1.1.0"
 
 parameters:
-  gap_up_pct: 0.02              # ギャップアップ閾値（始値/前日終値-1）
-  earnings_day_return_pct: 0.05 # 決算日終値上昇率閾値
-  volume_multiplier: 3.0        # 出来高倍率（20日平均比）
+  gap_up_pct: 0.01              # ギャップアップ閾値（始値/前日終値-1）
+  earnings_day_return_pct: 0.03 # 決算日終値上昇率閾値
+  volume_multiplier: 2.0        # 出来高倍率（20日平均比）
   surprise_threshold_pct: 0.0   # EPSサプライズ閾値（0=ポジティブなら全て）
   trend_ma_days: 200            # 長期トレンドフィルタ
   trend_slope_window: 20        # MA上向き判定
   entry_delay_days: 2           # 決算翌々営業日エントリー
   time_exit_days: 60            # 時間切れ（PEAD効果継続期間目安）
-  stop_loss_pct: -0.10          # ロスカット
+  stop_loss_pct: -0.07          # ロスカット
   take_profit_pct: 0.25         # 半利確閾値
   trailing_stop_pct: -0.15      # 半利確後トレーリングストップ
   pre_earnings_exit_days: 5     # 次回決算前クローズ（営業日）
@@ -21,10 +21,13 @@ parameters:
 
 parameter_grid:
   gap_up_pct: [0.01, 0.02, 0.03]
-  stop_loss_pct: [-0.07, -0.10, -0.15]
+  stop_loss_pct: [-0.05, -0.07, -0.10]
   take_profit_pct: [0.15, 0.25, 0.30]
 
 change_log:
   - version: "1.0.0"
     date: "2026-05-20"
     reason: "初期パラメータ設定（scenarios.md推奨値採用）。EPS予想がyfinanceで取得可能なため仕様通り実装"
+  - version: "1.1.0"
+    date: "2026-05-26"
+    reason: "シグナル数不足（10件/6年）のため緩和: gap 2%→1%, day_return 5%→3%, volume 3x→2x, stop -10%→-7%。ファネル分析でvol>=3が94%除外の主因と判明"

@@ -1,7 +1,7 @@
 scenario_id: S3
 name: "押し目買い（RSI＋トレンド）"
 enabled: false
-version: "1.0.0"
+version: "1.2.0"
 
 parameters:
   trend_ma_days: 50             # トレンドフィルタMA期間
@@ -25,3 +25,9 @@ change_log:
   - version: "1.0.0"
     date: "2026-05-20"
     reason: "初期パラメータ設定（scenarios.md推奨値採用）"
+  - version: "1.1.0"
+    date: "2026-05-26"
+    reason: "再有効化試行 → 取引数増加目的"
+  - version: "1.2.0"
+    date: "2026-05-26"
+    reason: "再無効化: 勝率21.7%・合計PnL-100%。trend_reversal出口74/92件でトレンド判定が機能していない。要パラメータ再設計"

@@ -166,6 +166,35 @@ class Repository:
             "SELECT * FROM earnings WHERE symbol = ? ORDER BY report_date", [symbol]
         ).pl()
 
+    def query_earnings_batch(
+        self,
+        symbols: list[str] | None = None,
+        start: str | None = None,
+        end: str | None = None,
+    ) -> pl.DataFrame:
+        """Return earnings as {symbol, date, is_earnings_day, eps_surprise_pct} for OHLCV join."""
+        conditions: list[str] = []
+        params: list[Any] = []
+        if symbols:
+            placeholders = ", ".join(["?" for _ in symbols])
+            conditions.append(f"symbol IN ({placeholders})")
+            params.extend(symbols)
+        if start:
+            conditions.append("report_date >= ?")
+            params.append(start)
+        if end:
+            conditions.append("report_date <= ?")
+            params.append(end)
+        where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+        sql = f"""
+            SELECT symbol,
+                   report_date        AS date,
+                   TRUE               AS is_earnings_day,
+                   surprise_pct       AS eps_surprise_pct
+            FROM earnings {where}
+        """
+        return self._conn.execute(sql, params).pl()  # type: ignore[return-value, no-any-return]
+
     # ── FX rates ─────────────────────────────────────────────────────────────
 
     def upsert_fx(self, pair: str, df: pl.DataFrame) -> int:
