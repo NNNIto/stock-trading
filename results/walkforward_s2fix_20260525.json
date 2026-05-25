@@ -1,0 +1,735 @@
+{
+  "run_id": "20260525_164430",
+  "git_hash": "d4914d2",
+  "is_start": "2019-01-01",
+  "is_end": "2024-12-31",
+  "capital_jpy": 3000000.0,
+  "market": "all",
+  "n_windows": 20,
+  "degradation_ratio": 1.2757,
+  "is_robust": true,
+  "median_train_sharpe": 0.4038,
+  "median_val_sharpe": 0.5151,
+  "windows": [
+    {
+      "window_id": 1,
+      "train_start": "2019-01-01",
+      "train_end": "2019-12-31",
+      "val_start": "2020-01-01",
+      "val_end": "2020-03-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.05,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 1.1809,
+      "val_sharpe": -0.1836,
+      "val_max_dd": -0.1629,
+      "val_win_rate": 0.1,
+      "val_trade_count": 10
+    },
+    {
+      "window_id": 2,
+      "train_start": "2019-04-01",
+      "train_end": "2020-03-31",
+      "val_start": "2020-04-01",
+      "val_end": "2020-06-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": -0.8053,
+      "val_sharpe": 0.7989,
+      "val_max_dd": -0.0494,
+      "val_win_rate": 0.7143,
+      "val_trade_count": 7
+    },
+    {
+      "window_id": 3,
+      "train_start": "2019-07-01",
+      "train_end": "2020-06-30",
+      "val_start": "2020-07-01",
+      "val_end": "2020-09-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 252,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 15,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.0219,
+      "val_sharpe": 0.7791,
+      "val_max_dd": -0.1977,
+      "val_win_rate": 0.5333,
+      "val_trade_count": 15
+    },
+    {
+      "window_id": 4,
+      "train_start": "2019-10-01",
+      "train_end": "2020-09-30",
+      "val_start": "2020-10-01",
+      "val_end": "2020-12-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 20,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.138,
+      "val_sharpe": 0.4508,
+      "val_max_dd": -0.0715,
+      "val_win_rate": 0.3636,
+      "val_trade_count": 11
+    },
+    {
+      "window_id": 5,
+      "train_start": "2020-01-01",
+      "train_end": "2020-12-31",
+      "val_start": "2021-01-01",
+      "val_end": "2021-03-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.08,
+          "trailing_stop_pct": -0.15,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 15,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.2852,
+      "val_sharpe": 0.3662,
+      "val_max_dd": -0.103,
+      "val_win_rate": 0.5,
+      "val_trade_count": 16
+    },
+    {
+      "window_id": 6,
+      "train_start": "2020-04-01",
+      "train_end": "2021-03-31",
+      "val_start": "2021-04-01",
+      "val_end": "2021-06-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.05,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 2
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.05,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.8269,
+      "val_sharpe": -1.1582,
+      "val_max_dd": -0.0669,
+      "val_win_rate": 0.3158,
+      "val_trade_count": 19
+    },
+    {
+      "window_id": 7,
+      "train_start": "2020-07-01",
+      "train_end": "2021-06-30",
+      "val_start": "2021-07-01",
+      "val_end": "2021-09-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 252,
+          "stop_loss_pct": -0.08,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.6258,
+      "val_sharpe": -0.9613,
+      "val_max_dd": -0.0624,
+      "val_win_rate": 0.3571,
+      "val_trade_count": 14
+    },
+    {
+      "window_id": 8,
+      "train_start": "2020-10-01",
+      "train_end": "2021-09-30",
+      "val_start": "2021-10-01",
+      "val_end": "2021-12-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.5755,
+      "val_sharpe": 0.146,
+      "val_max_dd": -0.0831,
+      "val_win_rate": 0.5,
+      "val_trade_count": 14
+    },
+    {
+      "window_id": 9,
+      "train_start": "2021-01-01",
+      "train_end": "2021-12-31",
+      "val_start": "2022-01-01",
+      "val_end": "2022-03-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 252,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.15,
+          "breakout_confirm_days": 3
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.2674,
+      "val_sharpe": 2.1798,
+      "val_max_dd": -0.0286,
+      "val_win_rate": 1.0,
+      "val_trade_count": 1
+    },
+    {
+      "window_id": 10,
+      "train_start": "2021-04-01",
+      "train_end": "2022-03-31",
+      "val_start": "2022-04-01",
+      "val_end": "2022-06-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.05,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 3
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 15,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.2804,
+      "val_sharpe": 0.0,
+      "val_max_dd": 0.0,
+      "val_win_rate": 0.0,
+      "val_trade_count": 0
+    },
+    {
+      "window_id": 11,
+      "train_start": "2021-07-01",
+      "train_end": "2022-06-30",
+      "val_start": "2022-07-01",
+      "val_end": "2022-09-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.08,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 3
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.1607,
+      "val_sharpe": 0.0,
+      "val_max_dd": 0.0,
+      "val_win_rate": 0.0,
+      "val_trade_count": 0
+    },
+    {
+      "window_id": 12,
+      "train_start": "2021-10-01",
+      "train_end": "2022-09-30",
+      "val_start": "2022-10-01",
+      "val_end": "2022-12-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.15,
+          "breakout_confirm_days": 3
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 20,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.3876,
+      "val_sharpe": 0.6288,
+      "val_max_dd": -0.0241,
+      "val_win_rate": 0.5,
+      "val_trade_count": 4
+    },
+    {
+      "window_id": 13,
+      "train_start": "2022-01-01",
+      "train_end": "2022-12-31",
+      "val_start": "2023-01-01",
+      "val_end": "2023-03-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.2315,
+      "val_sharpe": 1.1219,
+      "val_max_dd": -0.0992,
+      "val_win_rate": 0.8,
+      "val_trade_count": 10
+    },
+    {
+      "window_id": 14,
+      "train_start": "2022-04-01",
+      "train_end": "2023-03-31",
+      "val_start": "2023-04-01",
+      "val_end": "2023-06-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.05
+        }
+      },
+      "train_sharpe": 0.1812,
+      "val_sharpe": 3.8952,
+      "val_max_dd": -0.0456,
+      "val_win_rate": 0.8571,
+      "val_trade_count": 7
+    },
+    {
+      "window_id": 15,
+      "train_start": "2022-07-01",
+      "train_end": "2023-06-30",
+      "val_start": "2023-07-01",
+      "val_end": "2023-09-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 2
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.05,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.07
+        }
+      },
+      "train_sharpe": 1.1221,
+      "val_sharpe": -0.2769,
+      "val_max_dd": -0.0656,
+      "val_win_rate": 0.5333,
+      "val_trade_count": 15
+    },
+    {
+      "window_id": 16,
+      "train_start": "2022-10-01",
+      "train_end": "2023-09-30",
+      "val_start": "2023-10-01",
+      "val_end": "2023-12-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.1,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 2
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.05,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.5112,
+      "val_sharpe": 1.3023,
+      "val_max_dd": -0.0416,
+      "val_win_rate": 0.6111,
+      "val_trade_count": 18
+    },
+    {
+      "window_id": 17,
+      "train_start": "2023-01-01",
+      "train_end": "2023-12-31",
+      "val_start": "2024-01-01",
+      "val_end": "2024-03-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 504,
+          "stop_loss_pct": -0.05,
+          "trailing_stop_pct": -0.15,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.05,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.5716,
+      "val_sharpe": 1.2224,
+      "val_max_dd": -0.1195,
+      "val_win_rate": 0.5556,
+      "val_trade_count": 9
+    },
+    {
+      "window_id": 18,
+      "train_start": "2023-04-01",
+      "train_end": "2024-03-31",
+      "val_start": "2024-04-01",
+      "val_end": "2024-06-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.08,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.03,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.42,
+      "val_sharpe": 0.5795,
+      "val_max_dd": -0.0437,
+      "val_win_rate": 0.4167,
+      "val_trade_count": 12
+    },
+    {
+      "window_id": 19,
+      "train_start": "2023-07-01",
+      "train_end": "2024-06-30",
+      "val_start": "2024-07-01",
+      "val_end": "2024-09-30",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.08,
+          "trailing_stop_pct": -0.2,
+          "breakout_confirm_days": 2
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 20,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.5327,
+      "val_sharpe": -1.1224,
+      "val_max_dd": -0.1226,
+      "val_win_rate": 0.5,
+      "val_trade_count": 16
+    },
+    {
+      "window_id": 20,
+      "train_start": "2023-10-01",
+      "train_end": "2024-09-30",
+      "val_start": "2024-10-01",
+      "val_end": "2024-12-31",
+      "best_params": {
+        "S2": {
+          "high_lookback_days": 126,
+          "stop_loss_pct": -0.05,
+          "trailing_stop_pct": -0.1,
+          "breakout_confirm_days": 1
+        },
+        "S3": {
+          "rsi_oversold": 30,
+          "stop_loss_pct": -0.05,
+          "take_profit_pct": 0.1
+        },
+        "S4": {
+          "gap_up_pct": 0.01,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.15
+        },
+        "S6": {
+          "return_threshold": -0.1,
+          "rsi_oversold": 10,
+          "stop_loss_pct": -0.07,
+          "take_profit_pct": 0.03
+        }
+      },
+      "train_sharpe": 0.5284,
+      "val_sharpe": 0.6585,
+      "val_max_dd": -0.1453,
+      "val_win_rate": 0.5,
+      "val_trade_count": 12
+    }
+  ]
+}
