@@ -425,6 +425,87 @@ class JQuantsSource(DataSource):
     def fetch_fx(self, pair: str, start: date, end: date) -> pl.DataFrame:
         raise NotImplementedError("J-Quants does not provide FX data")
 
+    def fetch_earnings_bulk(
+        self,
+        start: date,
+        end: date,
+        cache_dir: str = "data/jquants_cache",
+    ) -> pl.DataFrame:
+        """Fetch all JP earnings via get_fin_summary_range (one API call per calendar day, cached).
+
+        Much faster than per-symbol fetch_earnings() for initial historical loads.
+        Subsequent calls only need to fetch new dates thanks to cache_dir.
+        Returns same schema as fetch_earnings(): symbol, report_date, eps_actual,
+        eps_estimate, surprise_pct.
+        """
+        import os
+
+        import pandas as pd
+
+        os.makedirs(cache_dir, exist_ok=True)
+        cli = self._client()
+
+        try:
+            raw = cli.get_fin_summary_range(
+                start_dt=start.strftime("%Y%m%d"),
+                end_dt=end.strftime("%Y%m%d"),
+                cache_dir=cache_dir,
+            )
+        except Exception as e:
+            logger.warning(f"jquants: fetch_earnings_bulk failed: {e}")
+            return _empty_bulk_earnings()
+
+        if raw.empty:
+            return _empty_bulk_earnings()
+
+        # Filter to annual/FY periods only
+        if "CurPerType" in raw.columns:
+            raw = raw[raw["CurPerType"].isin(["Annual", "FY"])].copy()
+        else:
+            raw = raw.copy()
+
+        if raw.empty:
+            return _empty_bulk_earnings()
+
+        # Convert 5-digit J-Quants code → 4-digit + ".T"
+        raw["symbol"] = raw["Code"].astype(str).str[:4] + ".T"
+
+        # Sort per company, then shift NxFEPS to get prior-year forecast as estimate
+        raw = raw.sort_values(["Code", "DiscDate"]).copy()
+        if "NxFEPS" in raw.columns:
+            raw["eps_estimate"] = raw.groupby("Code")["NxFEPS"].shift(1)
+        else:
+            raw["eps_estimate"] = float("nan")
+
+        raw["report_date"] = pd.to_datetime(raw["DiscDate"], errors="coerce").dt.date
+        raw["eps_actual"] = pd.to_numeric(
+            raw["EPS"] if "EPS" in raw.columns else pd.Series(dtype=float), errors="coerce"
+        )
+        raw["eps_estimate"] = pd.to_numeric(raw["eps_estimate"], errors="coerce")
+
+        # Compute surprise_pct
+        mask = raw["eps_actual"].notna() & raw["eps_estimate"].notna() & (raw["eps_estimate"] != 0)
+        raw["surprise_pct"] = float("nan")
+        raw.loc[mask, "surprise_pct"] = (
+            raw.loc[mask, "eps_actual"] - raw.loc[mask, "eps_estimate"]
+        ) / raw.loc[mask, "eps_estimate"].abs()
+
+        result = raw[["symbol", "report_date", "eps_actual", "eps_estimate", "surprise_pct"]].copy()
+        result = result.dropna(subset=["report_date"])
+
+        if result.empty:
+            return _empty_bulk_earnings()
+
+        logger.info(f"jquants bulk: {len(result)} records, {result['symbol'].nunique()} symbols")
+        return pl.from_pandas(result).cast(  # type: ignore[arg-type]
+            {
+                "report_date": pl.Date,
+                "eps_actual": pl.Float64,
+                "eps_estimate": pl.Float64,
+                "surprise_pct": pl.Float64,
+            }
+        )
+
     def fetch_earnings(self, symbol: str) -> pl.DataFrame:
         """Fetch earnings from J-Quants /fins/summary (annual periods only).
 
@@ -620,6 +701,18 @@ def _to_float(val: Any) -> float | None:
 
 def _empty_ohlcv() -> pl.DataFrame:
     return pl.DataFrame({col: [] for col in OHLCV_SCHEMA}).cast(OHLCV_SCHEMA)  # type: ignore[arg-type]
+
+
+def _empty_bulk_earnings() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "symbol": pl.Series([], dtype=pl.Utf8),
+            "report_date": pl.Series([], dtype=pl.Date),
+            "eps_actual": pl.Series([], dtype=pl.Float64),
+            "eps_estimate": pl.Series([], dtype=pl.Float64),
+            "surprise_pct": pl.Series([], dtype=pl.Float64),
+        }
+    )
 
 
 def _empty_earnings(symbol: str) -> pl.DataFrame:

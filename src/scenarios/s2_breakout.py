@@ -28,6 +28,7 @@ class S2Params(ScenarioParams):
     trailing_stop_pct: float = -0.15
     trend_exit_ma_days: int = 20
     time_exit_days: int = 180
+    breakout_confirm_days: int = 1
 
 
 class S2Breakout(ScenarioBase):
@@ -68,8 +69,14 @@ class S2Breakout(ScenarioBase):
 
         p = cast(S2Params, self.params)
 
+        # Require close > prior-day 252d high for N consecutive days before entry.
+        # window_size=1 preserves legacy single-day behavior.
+        breakout_confirmed = (pl.col("close") > pl.col("high_252d").shift(1)).cast(
+            pl.Int32
+        ).rolling_sum(window_size=p.breakout_confirm_days) >= p.breakout_confirm_days
+
         signal = (
-            (pl.col("close") > pl.col("high_252d").shift(1))
+            breakout_confirmed
             & (pl.col("vol_ratio_20") >= p.volume_multiplier)
             & (pl.col("ma_200_slope") > 0)
             & (pl.col("close") > pl.col("ma_200"))

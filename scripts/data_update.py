@@ -12,7 +12,7 @@ from pathlib import Path
 # Allow running as script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.data.fetcher import build_default_source
+from src.data.fetcher import JQuantsSource, build_default_source
 from src.data.quality import clean_ohlcv, run_batch_quality_check
 from src.data.repository import Repository
 from src.data.universe import load_universe
@@ -128,6 +128,37 @@ def run_update(
     logger.info("Data update complete")
 
 
+def run_bulk_earnings(
+    start: date,
+    end: date,
+    cache_dir: str = "data/jquants_cache",
+    universe_filter: list[str] | None = None,
+) -> None:
+    """Fetch all JP earnings in bulk via J-Quants get_fin_summary_range.
+
+    Uses cache_dir to avoid re-fetching already-downloaded dates.
+    For the initial historical load this is much faster than per-symbol fetch.
+    For daily incremental runs only the new date needs to be fetched.
+    """
+    jquants = JQuantsSource()
+    df = jquants.fetch_earnings_bulk(start, end, cache_dir=cache_dir)
+
+    if df.is_empty():
+        logger.warning("bulk earnings: no data returned")
+        return
+
+    # Optionally restrict to known universe symbols
+    if universe_filter:
+        df = df.filter(df["symbol"].is_in(universe_filter))
+
+    with Repository() as repo:
+        n = repo.upsert_earnings(df)
+        logger.info(
+            f"bulk earnings: upserted {n} rows "
+            f"({df['symbol'].n_unique()} symbols, {start} to {end})"
+        )
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -140,11 +171,34 @@ if __name__ == "__main__":
         action="store_true",
         help="Also fetch earnings data (slow: 1 request/symbol)",
     )
+    parser.add_argument(
+        "--bulk-earnings",
+        action="store_true",
+        help="Fetch JP earnings in bulk via J-Quants get_fin_summary_range (fast, cached)",
+    )
+    parser.add_argument(
+        "--earnings-cache-dir",
+        default="data/jquants_cache",
+        help="Cache directory for J-Quants bulk download (default: data/jquants_cache)",
+    )
     args = parser.parse_args()
 
-    run_update(
-        market=args.market,
-        start=date.fromisoformat(args.start) if args.start else None,
-        end=date.fromisoformat(args.end) if args.end else None,
-        with_earnings=args.with_earnings,
-    )
+    _start = date.fromisoformat(args.start) if args.start else None
+    _end = date.fromisoformat(args.end) if args.end else date.today()
+
+    if args.bulk_earnings:
+        _bulk_start = _start or date.fromisoformat("2019-01-01")
+        jp_syms = load_universe("JP")["symbol"].to_list()
+        run_bulk_earnings(
+            start=_bulk_start,
+            end=_end,
+            cache_dir=args.earnings_cache_dir,
+            universe_filter=jp_syms,
+        )
+    else:
+        run_update(
+            market=args.market,
+            start=_start,
+            end=_end,
+            with_earnings=args.with_earnings,
+        )

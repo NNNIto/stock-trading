@@ -12,6 +12,7 @@ parameters:
   trailing_stop_pct: -0.15      # トレーリングストップ（高値比）
   trend_exit_ma_days: 20        # トレンド転換判定MA
   time_exit_days: 180           # 時間切れ（営業日）
+  breakout_confirm_days: 2      # 52週高値超え継続日数（フェイクブレイクアウト対策）
 
 # Grid search candidates for walk-forward optimisation.
 # Keys must match parameter names; values are the candidate list.
@@ -20,6 +21,7 @@ parameter_grid:
   high_lookback_days: [126, 252, 504]
   stop_loss_pct: [-0.05, -0.08, -0.10]
   trailing_stop_pct: [-0.10, -0.15, -0.20]
+  breakout_confirm_days: [1, 2, 3]
 
 change_log:
   - version: "1.0.0"
