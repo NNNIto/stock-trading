@@ -14,7 +14,7 @@ from src.scenarios.base import (
     ScenarioParams,
 )
 
-_REQUIRED_COLS = {"close", "ma_50", "ma_50_slope", "rsi_14"}
+_REQUIRED_COLS = {"close", "ma_50", "ma_50_slope", "ma_200", "rsi_14"}
 
 
 class S3Params(ScenarioParams):
@@ -75,7 +75,8 @@ class S3Pullback(ScenarioBase):
         rsi_rolling_min = pl.col("rsi_14").rolling_min(window_size=p.rsi_recovery_window)
 
         signal = (
-            (pl.col("close") > pl.col("ma_50"))
+            (pl.col("close") > pl.col("ma_200"))
+            & (pl.col("close") > pl.col("ma_50"))
             & (pl.col("ma_50_slope") > 0)
             & (rsi_rolling_min <= p.rsi_oversold)
             & (pl.col("rsi_14") >= p.rsi_recovery)

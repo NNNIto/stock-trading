@@ -1,23 +1,23 @@
 scenario_id: S3
 name: "押し目買い（RSI＋トレンド）"
 enabled: false
-version: "1.2.0"
+version: "1.4.0"
 
 parameters:
   trend_ma_days: 50             # トレンドフィルタMA期間
   trend_slope_window: 10        # MA上向き判定（N日前比）
   rsi_period: 14                # RSI計算期間
-  rsi_oversold: 35              # RSI売られすぎ閾値（直近5日内に到達）
-  rsi_recovery: 40              # RSI回復閾値（当日）
+  rsi_oversold: 30              # RSI売られすぎ閾値（直近5日内に到達）
+  rsi_recovery: 42              # RSI回復閾値（当日）
   rsi_recovery_window: 5        # 売られすぎからの回復を判定する窓
   take_profit_pct: 0.15         # 利確（エントリー比）
   rsi_take_profit: 70           # RSI利確閾値
   stop_loss_pct: -0.07          # ロスカット
   time_exit_days: 45            # 時間切れ（営業日）
-  trend_exit_ma_days: 50        # トレンド転換判定MA
+  trend_exit_ma_days: 200       # トレンド転換判定MA（MA50→MA200: 短期ノイズで抜けない）
 
 parameter_grid:
-  rsi_oversold: [30, 35, 40]
+  rsi_oversold: [25, 30, 35]
   stop_loss_pct: [-0.05, -0.07, -0.10]
   take_profit_pct: [0.10, 0.15, 0.20]
 
@@ -31,3 +31,9 @@ change_log:
   - version: "1.2.0"
     date: "2026-05-26"
     reason: "再無効化: 勝率21.7%・合計PnL-100%。trend_reversal出口74/92件でトレンド判定が機能していない。要パラメータ再設計"
+  - version: "1.3.0"
+    date: "2026-05-26"
+    reason: "再設計: close>ma_200をエントリー条件追加、出口判定をma_50→ma_200変更（MA50付近エントリーでMA50割れ即出口の構造矛盾を解消）、rsi_oversold 35→30"
+  - version: "1.4.0"
+    date: "2026-05-26"
+    reason: "再無効化: MA200設計でも勝率21.4%（改善なし）。RSI(14)押し目シグナル自体にedgeなし。要シグナル根本見直し"
