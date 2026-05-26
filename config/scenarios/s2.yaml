@@ -1,15 +1,15 @@
 scenario_id: S2
 name: "52週高値ブレイクアウト"
 enabled: true
-version: "1.2.0"
+version: "1.3.0"
 
 parameters:
   high_lookback_days: 252       # 52週高値判定期間
-  volume_multiplier: 1.5        # 当日出来高 / 20日平均出来高
+  volume_multiplier: 2.0        # 当日出来高 / 20日平均出来高
   trend_ma_days: 200            # トレンドフィルタMA期間
   trend_slope_window: 20        # MA上向き判定（N日前比）
-  stop_loss_pct: -0.10          # ロスカット（エントリー比）
-  trailing_stop_pct: -0.15      # トレーリングストップ（高値比）
+  stop_loss_pct: -0.10          # ロスカット
+  trailing_stop_pct: -0.15      # トレーリングストップ
   trend_exit_ma_days: 20        # トレンド転換判定MA
   time_exit_days: 180           # 時間切れ（営業日）
   breakout_confirm_days: 2      # 52週高値超え継続日数（フェイクブレイクアウト対策）
@@ -33,3 +33,6 @@ change_log:
   - version: "1.2.0"
     date: "2026-05-26"
     reason: "stop_loss_pct -0.07→-0.10: WF 20窓で12/20が-0.10を選択。ギャップダウンへの耐性向上が目的"
+  - version: "1.3.0"
+    date: "2026-05-26"
+    reason: "volume_multiplier 1.5→2.0: 勝率46.3%→52.7%、平均PnL+2.06%→+3.47%、Sharpe 0.55→0.62、MaxDD -16.7%→-14.5%に改善。高出来高ブレイクアウトのみに絞ることでフェイクブレイク排除"
