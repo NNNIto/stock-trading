@@ -18,7 +18,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="$REPO_DIR/logs"
-PYTHON="uv run python"
+UV_BIN="$(which uv)"
+PYTHON="$UV_BIN run python"
 
 mkdir -p "$LOG_DIR"
 
