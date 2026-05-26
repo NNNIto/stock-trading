@@ -1,18 +1,18 @@
 scenario_id: S6
 name: "平均回帰（短期反発）"
 enabled: true
-version: "1.2.0"
+version: "1.3.0"
 
 parameters:
   return_window: 5              # 下落判定期間（営業日）
-  return_threshold: -0.07       # 下落率閾値
+  return_threshold: -0.10       # 下落率閾値
   trend_ma_days: 200            # 長期トレンドフィルタ
   volume_multiplier: 2.0        # 出来高倍率（売りクライマックス確認）
   rsi_period: 2                 # 短期RSI期間
-  rsi_oversold: 15              # 極端な売られすぎ閾値（20は質低下のため15に戻す）
-  take_profit_pct: 0.05         # 利確
+  rsi_oversold: 10              # 極端な売られすぎ閾値
+  take_profit_pct: 0.03         # 利確
   rsi_take_profit: 70           # RSI利確閾値（短期RSI）
-  stop_loss_pct: -0.05          # ロスカット
+  stop_loss_pct: -0.07          # ロスカット
   time_exit_days: 10            # 時間切れ（短期想定）
 
 parameter_grid:
@@ -31,3 +31,6 @@ change_log:
   - version: "1.2.0"
     date: "2026-05-26"
     reason: "rsi_oversold 20は品質低下（追加33件の平均pnl -1.4%）のため15に戻す。return_thresholdも-0.07に戻す"
+  - version: "1.3.0"
+    date: "2026-05-26"
+    reason: "WF推奨適用: return_threshold -0.07→-0.10(15/20), rsi_oversold 15→10(14/20), stop_loss -0.05→-0.07(14/20), take_profit 0.05→0.03(10/20)"

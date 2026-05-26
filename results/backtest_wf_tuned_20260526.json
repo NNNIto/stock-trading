@@ -1,0 +1,25 @@
+{
+  "run_id": "20260526_115536",
+  "git_hash": "98db5ac",
+  "start": "2019-01-01",
+  "end": "2024-12-31",
+  "capital_jpy": 3000000.0,
+  "market": "all",
+  "n_symbols": 250,
+  "trade_count": 147,
+  "metrics": {
+    "total_return_pct": 0.301313,
+    "cagr": 0.044905,
+    "sharpe_ratio": 0.2905,
+    "sharpe_ci_low": -0.3931,
+    "sharpe_ci_high": 0.9702,
+    "sortino_ratio": 0.4378,
+    "max_drawdown": -0.184687,
+    "avg_drawdown": -0.096792,
+    "win_rate": 0.483,
+    "payoff_ratio": 1.3796,
+    "profit_factor": 1.2888,
+    "avg_holding_days": 57.1,
+    "is_reliable": true
+  }
+}
