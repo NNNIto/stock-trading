@@ -491,6 +491,8 @@ class BacktestEngine:
                     & (pl.col("date") <= end_date)
                 )
                 market = sym_data["market"][0] if "market" in sym_data.columns else "JP"
+                if not scenario.is_enabled_for_market(str(market)):
+                    continue
                 for row in buy_rows.iter_rows(named=True):
                     entry = _PendingEntry(
                         symbol=symbol,

@@ -1,6 +1,7 @@
 scenario_id: S2
 name: "52週高値ブレイクアウト"
 enabled: true
+enabled_markets: [US]    # モメンタム効果が弱い JP では無効（avg -1.18%）
 version: "1.3.0"
 
 parameters:

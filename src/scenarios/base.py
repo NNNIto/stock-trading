@@ -141,6 +141,20 @@ class ScenarioBase(ABC):
     def is_enabled(self) -> bool:
         return self.params.enabled
 
+    def is_enabled_for_market(self, market: str) -> bool:
+        """Return True if this scenario should run for the given market.
+
+        If ``enabled_markets`` is absent from the YAML, the scenario runs for
+        all markets (backward-compatible default).  When present it must be a
+        list of market codes, e.g. ``[US]``.
+        """
+        if not self.is_enabled:
+            return False
+        markets: list[str] | None = getattr(self, "_raw_params", {}).get("enabled_markets")
+        if markets is None:
+            return True
+        return market.upper() in [m.upper() for m in markets]
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(id={self.scenario_id}, v={self.params.version})"
 
