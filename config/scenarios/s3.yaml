@@ -1,25 +1,22 @@
 scenario_id: S3
-name: "押し目買い（RSI＋トレンド）"
+name: "押し目買い（RSI(2)＋MA200トレンド）"
 enabled: false
-version: "1.4.0"
+version: "2.1.0"
 
 parameters:
-  trend_ma_days: 50             # トレンドフィルタMA期間
-  trend_slope_window: 10        # MA上向き判定（N日前比）
-  rsi_period: 14                # RSI計算期間
-  rsi_oversold: 30              # RSI売られすぎ閾値（直近5日内に到達）
-  rsi_recovery: 42              # RSI回復閾値（当日）
-  rsi_recovery_window: 5        # 売られすぎからの回復を判定する窓
-  take_profit_pct: 0.15         # 利確（エントリー比）
-  rsi_take_profit: 70           # RSI利確閾値
+  rsi_oversold: 10              # RSI(2)売られすぎ閾値（直近3日以内に到達）
+  rsi_recovery: 50              # RSI(2)回復閾値（当日）
+  rsi_recovery_window: 3        # 売られすぎからの回復を判定する窓
+  take_profit_pct: 0.10         # 価格利確（エントリー比）
+  rsi_take_profit: 70           # RSI(2)利確閾値（過熱退出）
   stop_loss_pct: -0.07          # ロスカット
-  time_exit_days: 45            # 時間切れ（営業日）
-  trend_exit_ma_days: 200       # トレンド転換判定MA（MA50→MA200: 短期ノイズで抜けない）
+  time_exit_days: 20            # 時間切れ（短期想定）
+  trend_exit_ma_days: 200       # トレンド転換判定MA
 
 parameter_grid:
-  rsi_oversold: [25, 30, 35]
+  rsi_oversold: [5, 10, 15]
   stop_loss_pct: [-0.05, -0.07, -0.10]
-  take_profit_pct: [0.10, 0.15, 0.20]
+  take_profit_pct: [0.05, 0.10, 0.15]
 
 change_log:
   - version: "1.0.0"
@@ -37,3 +34,9 @@ change_log:
   - version: "1.4.0"
     date: "2026-05-26"
     reason: "再無効化: MA200設計でも勝率21.4%（改善なし）。RSI(14)押し目シグナル自体にedgeなし。要シグナル根本見直し"
+  - version: "2.0.0"
+    date: "2026-05-26"
+    reason: "RSI(14)→RSI(2)に全面再設計（Connorsスタイル）。MA200上昇トレンド中のRSI(2)<10極端売られ過ぎ+回復50超をエントリー条件に。出口はRSI(2)>=70または価格+10%。保有期間20日に短縮"
+  - version: "2.1.0"
+    date: "2026-05-26"
+    reason: "再無効化: rsi_2>=70の出口が翌日に到達→take_profit 455件が平均-0.24%。S6と信号が重複しS6の0件化（ポジション枠競合）。S6が既にRSI(2)+平均回帰を実装済みのため不要"

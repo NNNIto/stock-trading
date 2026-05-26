@@ -1,4 +1,4 @@
-"""S3 – Pullback buy (RSI + trend) scenario."""
+"""S3 – Pullback buy (RSI(2) + MA200 trend) scenario."""
 
 from __future__ import annotations
 
@@ -14,39 +14,35 @@ from src.scenarios.base import (
     ScenarioParams,
 )
 
-_REQUIRED_COLS = {"close", "ma_50", "ma_50_slope", "ma_200", "rsi_14"}
+_REQUIRED_COLS = {"close", "ma_200", "rsi_2"}
 
 
 class S3Params(ScenarioParams):
-    """Parameters for S3 – pullback buy (RSI + trend)."""
+    """Parameters for S3 – RSI(2) pullback buy within MA200 uptrend."""
 
-    trend_ma_days: int = 50
-    trend_slope_window: int = 10
-    rsi_period: int = 14
-    rsi_oversold: float = 35.0
-    rsi_recovery: float = 40.0
-    rsi_recovery_window: int = 5
-    take_profit_pct: float = 0.15
+    rsi_oversold: float = 10.0
+    rsi_recovery: float = 50.0
+    rsi_recovery_window: int = 3
+    take_profit_pct: float = 0.10
     rsi_take_profit: float = 70.0
     stop_loss_pct: float = -0.07
-    time_exit_days: int = 45
-    trend_exit_ma_days: int = 50
+    time_exit_days: int = 20
+    trend_exit_ma_days: int = 200
 
 
 class S3Pullback(ScenarioBase):
-    """Pullback buy with RSI oversold recovery and uptrend filter.
+    """RSI(2) extreme-oversold bounce within a long-term uptrend (Connors-style).
 
     Entry (all conditions on the same bar):
-    1. close > ma_50
-    2. ma_50_slope > 0
-    3. rsi_14 rolling_min(rsi_recovery_window) <= rsi_oversold — touched oversold recently
-    4. rsi_14 >= rsi_recovery — current RSI has recovered
-    5. close > close.shift(1) — price bounced
+    1. close > ma_200                               — long-term uptrend
+    2. rsi_2 rolling_min(rsi_recovery_window) <= rsi_oversold — touched extreme oversold
+    3. rsi_2 >= rsi_recovery                        — RSI(2) has snapped back
+    4. close > close.shift(1)                       — price up today
 
     Exit (first matching reason wins):
-    1. TAKE_PROFIT   : close >= entry_price*(1+take_profit_pct) OR rsi_14>=rsi_take_profit
+    1. TAKE_PROFIT   : close >= entry_price*(1+take_profit_pct) OR rsi_2 >= rsi_take_profit
     2. STOP_LOSS     : close <= entry_price * (1 + stop_loss_pct)
-    3. TREND_REVERSAL: close < ma_50
+    3. TREND_REVERSAL: close < ma_200
     4. TIME_EXIT     : holding_days >= time_exit_days
     """
 
@@ -56,6 +52,9 @@ class S3Pullback(ScenarioBase):
         flat = {**raw, **raw.get("parameters", {})}
         flat.pop("parameters", None)
         flat.pop("change_log", None)
+        flat.pop("trend_ma_days", None)
+        flat.pop("trend_slope_window", None)
+        flat.pop("rsi_period", None)
         return S3Params(**flat)
 
     def generate_signals(self, data: pl.DataFrame) -> pl.DataFrame:
@@ -72,14 +71,12 @@ class S3Pullback(ScenarioBase):
 
         p = cast(S3Params, self.params)
 
-        rsi_rolling_min = pl.col("rsi_14").rolling_min(window_size=p.rsi_recovery_window)
+        rsi_rolling_min = pl.col("rsi_2").rolling_min(window_size=p.rsi_recovery_window)
 
         signal = (
             (pl.col("close") > pl.col("ma_200"))
-            & (pl.col("close") > pl.col("ma_50"))
-            & (pl.col("ma_50_slope") > 0)
             & (rsi_rolling_min <= p.rsi_oversold)
-            & (pl.col("rsi_14") >= p.rsi_recovery)
+            & (pl.col("rsi_2") >= p.rsi_recovery)
             & (pl.col("close") > pl.col("close").shift(1))
         )
 
@@ -102,12 +99,12 @@ class S3Pullback(ScenarioBase):
                 return float("nan")
 
         close = _f("close")
-        rsi_14 = _f("rsi_14")
+        rsi_2 = _f("rsi_2")
         trend_ma = _f(f"ma_{p.trend_exit_ma_days}")
 
-        if close >= position.entry_price * (1 + p.take_profit_pct):
-            return ExitReason.TAKE_PROFIT
-        if not math.isnan(rsi_14) and rsi_14 >= p.rsi_take_profit:
+        price_tp = close >= position.entry_price * (1 + p.take_profit_pct)
+        rsi_tp = not math.isnan(rsi_2) and rsi_2 >= p.rsi_take_profit
+        if price_tp or rsi_tp:
             return ExitReason.TAKE_PROFIT
 
         if close <= position.entry_price * (1 + p.stop_loss_pct):
