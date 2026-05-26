@@ -6,8 +6,10 @@ Supports both initial historical load (2018–) and daily incremental update.
 from __future__ import annotations
 
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 # Allow running as script
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -21,6 +23,23 @@ from src.utils.logger import get_logger, setup_logger
 
 setup_logger()
 logger = get_logger()
+
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 15  # seconds; doubles each attempt
+
+
+def _fetch_with_retry(fn: Any, label: str) -> Any:
+    """Call fn(); retry up to _MAX_RETRIES times with exponential backoff."""
+    for attempt in range(_MAX_RETRIES):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == _MAX_RETRIES - 1:
+                raise
+            delay = _RETRY_BASE_DELAY * (2**attempt)
+            logger.warning(f"{label}: attempt {attempt + 1} failed ({e}). retry in {delay}s…")
+            time.sleep(delay)
+    return None  # unreachable
 
 
 def run_update(
@@ -75,8 +94,13 @@ def run_update(
                         f"{mkt}: batch {i // batch_size + 1}/{(len(syms) - 1) // batch_size + 1}"
                     )
                     try:
-                        raw = source.fetch_ohlcv(batch, fetch_start, end, mkt)
-                        if raw.is_empty():
+                        raw = _fetch_with_retry(
+                            lambda b=batch, fs=fetch_start, m=mkt: source.fetch_ohlcv(
+                                b, fs, end, m
+                            ),
+                            f"{mkt} batch {i // batch_size + 1}",
+                        )
+                        if raw is None or raw.is_empty():
                             logger.warning(f"{mkt}: empty data for batch {batch[:3]}...")
                             continue
                         cleaned = clean_ohlcv(raw)
@@ -86,7 +110,7 @@ def run_update(
                             logger.warning(f"{mkt}: {len(failed)} symbols failed quality check")
                         repo.upsert_ohlcv(cleaned)
                     except Exception as e:
-                        logger.error(f"{mkt}: batch error: {e}")
+                        logger.error(f"{mkt}: batch failed after {_MAX_RETRIES} retries: {e}")
 
             # ── Earnings (optional) ──────────────────────────────────────────
             if with_earnings:
@@ -119,11 +143,15 @@ def run_update(
         else:
             logger.info(f"Fetching USD/JPY FX {fx_start} to {end}")
             try:
-                fx_df = source.fetch_fx("USDJPY=X", fx_start, end)
-                repo.upsert_fx("USDJPY", fx_df)
-                logger.info(f"FX: stored {fx_df.height} rows")
+                fx_df = _fetch_with_retry(
+                    lambda fs=fx_start: source.fetch_fx("USDJPY=X", fs, end),
+                    "FX USDJPY",
+                )
+                if fx_df is not None and not fx_df.is_empty():
+                    repo.upsert_fx("USDJPY", fx_df)
+                    logger.info(f"FX: stored {fx_df.height} rows")
             except Exception as e:
-                logger.error(f"FX fetch failed: {e}")
+                logger.error(f"FX fetch failed after {_MAX_RETRIES} retries: {e}")
 
     logger.info("Data update complete")
 

@@ -276,6 +276,14 @@ def format_metrics(m: PerformanceMetrics) -> str:
         if m.benchmark_annual_return is not None and m.excess_return is not None
         else ""
     )
+    warnings: list[str] = []
+    if m.sharpe_ci_low < 0:
+        warnings.append(
+            f"  ⚠ Sharpe CI下限 {m.sharpe_ci_low:.2f} < 0 — 統計的有意性不十分（取引数を増やすか期間延長を検討）"
+        )
+    if m.trade_count < 50:
+        warnings.append(f"  ⚠ 取引数 {m.trade_count} 件 — 50件未満は推定誤差が大きい")
+    warn_str = "\n".join(warnings) + "\n" if warnings else ""
     return (
         f"── Performance Metrics ──────────────────\n"
         f"  Total return:     {m.total_return_pct:+.2%}\n"
@@ -290,5 +298,6 @@ def format_metrics(m: PerformanceMetrics) -> str:
         f"  Payoff ratio:     {pr_str}\n"
         f"  Profit factor:    {pf_str}\n"
         f"  Avg holding:      {m.avg_holding_days:.1f} days\n"
-        f"─────────────────────────────────────────"
+        f"─────────────────────────────────────────\n"
+        f"{warn_str}".rstrip()
     )

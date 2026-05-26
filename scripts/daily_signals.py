@@ -105,13 +105,15 @@ def _generate_buy_signals(
             sym_data = data.filter(pl.col("symbol") == sym).sort("date")
             if sym_data.is_empty():
                 continue
+            market = str(sym_data["market"][0]) if "market" in sym_data.columns else "JP"
+            if not scenario.is_enabled_for_market(market):
+                continue
             try:
                 sig_df = scenario.generate_signals(sym_data)
                 today_buys = sig_df.filter(
                     (pl.col("date") == signal_date) & (pl.col("action") == "BUY")
                 )
                 if today_buys.height > 0:
-                    market = str(sym_data["market"][0]) if "market" in sym_data.columns else "JP"
                     results.append(
                         {
                             "symbol": sym,
