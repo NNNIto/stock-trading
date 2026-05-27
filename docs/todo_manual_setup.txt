@@ -1,0 +1,64 @@
+================================================================================
+  stock-trading 手動セットアップ残作業
+  作成: 2026-05-28
+================================================================================
+
+コードは完成・テスト済み。以下を完了すると日次自動化が稼働する。
+
+
+[ ] STEP 1  .env ファイルの作成
+
+    cd /home/natsuki/stock-trading
+    cp .env.example .env
+    # .env を開いて SLACK_WEBHOOK_URL を設定する
+
+    Slack Webhook URL の取得手順:
+      1. https://api.slack.com/apps を開く
+      2. 「Create New App」→「From scratch」→ アプリ名（例: stock-trading-bot）
+      3. ワークスペースを選択して「Create App」
+      4. 左メニュー「Incoming Webhooks」→ スイッチを ON
+      5. 「Add New Webhook to Workspace」→ 通知先チャンネルを選択
+      6. 表示された https://hooks.slack.com/services/... をコピーして .env に貼る
+
+    動作確認:
+      uv run python -c "
+      from src.notification.slack import notify_error
+      notify_error('Slack 通知テスト')
+      "
+      → Slack チャンネルに通知が届けば OK
+
+
+[ ] STEP 2  cron ジョブの登録
+
+    # 事前確認（エラーなく完了すること）
+    uv run python scripts/daily_signals.py --dry-run
+
+    # 登録
+    bash scripts/setup_cron.sh
+
+    # 確認
+    crontab -l
+    # 以下2行が表示されれば OK:
+    #   0 6 * * 1-5  data_update.py ...
+    #   15 6 * * 1-5 daily_signals.py ...
+
+
+[ ] STEP 3（任意）  WSL2 再起動後の cron 永続化設定
+
+    sudo nano /etc/wsl.conf
+    # 以下を追記:
+    [boot]
+    command = service cron start
+
+    # Windows 再起動後も cron が自動起動されるようになる
+
+
+================================================================================
+  完了済み作業
+================================================================================
+
+[x] DB 最新化（2026-05-28 実施 / 最終日: 2026-05-26）
+[x] コード実装・テスト（329/329 PASS）
+[x] WF 分析・パラメータ確定（US 専用, Sharpe 0.63, CAGR +6.94%）
+
+================================================================================
