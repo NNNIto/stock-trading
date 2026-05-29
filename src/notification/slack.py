@@ -13,7 +13,11 @@ import urllib.request
 from datetime import date
 from typing import Any
 
+from dotenv import load_dotenv
+
 from src.utils.logger import get_logger
+
+load_dotenv()
 
 logger = get_logger()
 
