@@ -830,6 +830,8 @@ def _notify_fallback(source_name: str) -> None:
         import os
         import urllib.request
 
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return
         url = os.environ.get("SLACK_WEBHOOK_URL")
         if not url:
             return
