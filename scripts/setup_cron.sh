@@ -42,8 +42,8 @@ fi
 # 既存エントリを除去してから再登録（冪等）
 (
     crontab -l 2>/dev/null \
-        | grep -v "data_update.py" \
-        | grep -v "daily_signals.py"
+        | { grep -v "data_update.py" || true; } \
+        | { grep -v "daily_signals.py" || true; }
     echo "$DATA_UPDATE_JOB"
     echo "$DAILY_SIGNALS_JOB"
 ) | crontab -
