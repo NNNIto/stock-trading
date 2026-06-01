@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import polars as pl
 
+from src.backtest.engine import MacroFilter
 from src.data.indicators import add_indicators_batch
 from src.data.repository import Repository
 from src.data.universe import get_liquid_symbols
@@ -56,6 +57,8 @@ logger = get_logger()
 
 _LOOKBACK_DAYS = 400  # days of history required for indicator warm-up
 _SCENARIO_PRIORITY: dict[str, int] = {"S6": 0, "S3": 1, "S2": 2, "S4": 3}
+_INDEX_TICKERS = {"JP": "^N225", "US": "SPY"}
+_MA200_WARMUP_DAYS = 400  # fetch extra history to warm up 200MA
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
@@ -87,6 +90,49 @@ def _load_recent_data(signal_date: date) -> pl.DataFrame:
         logger.warning("daily_signals: no OHLCV data found in DB")
         return df
     return add_indicators_batch(df)
+
+
+# ── Macro filter ─────────────────────────────────────────────────────────────
+
+
+def _build_macro_filter(signal_date: date) -> MacroFilter:
+    """Build MacroFilter with index 200MA flags, matching run_backtest.py logic."""
+    import yfinance as yf
+
+    fetch_start = signal_date - timedelta(days=_MA200_WARMUP_DAYS)
+    above_ma200: dict[str, dict[date, bool]] = {"JP": {}, "US": {}}
+
+    for market, ticker in _INDEX_TICKERS.items():
+        try:
+            raw = yf.download(
+                ticker,
+                start=fetch_start.isoformat(),
+                end=(signal_date + timedelta(days=1)).isoformat(),
+                progress=False,
+                auto_adjust=True,
+            )
+            if raw.empty:
+                logger.warning(f"macro_filter: no data for {ticker}, skipping")
+                continue
+            close = raw["Close"].squeeze()
+            ma200 = close.rolling(200).mean()
+            above = close > ma200
+            above_ma200[market] = {
+                d.date(): bool(v)
+                for d, v in above.items()
+                if not (v != v)  # exclude NaN
+            }
+            is_above = above_ma200[market].get(signal_date)
+            logger.info(
+                f"macro_filter: {ticker} on {signal_date} → {'above' if is_above else 'below'} 200MA"
+            )
+        except Exception as e:
+            logger.warning(f"macro_filter: failed to fetch {ticker}: {e}")
+
+    return MacroFilter(
+        jp_index_above_ma200=above_ma200["JP"],
+        us_index_above_ma200=above_ma200["US"],
+    )
 
 
 # ── Signal generation ─────────────────────────────────────────────────────────
@@ -277,6 +323,19 @@ def run(
     # Step 5: Conflict resolution
     approved = _resolve_conflicts(raw_signals, open_pos, settings.risk.max_positions)
     logger.info(f"daily_signals: {len(approved)} approved signals")
+
+    # Step 5.5: Apply macro filter (index 200MA)
+    macro = _build_macro_filter(signal_date)
+    pre_macro = len(approved)
+    approved = [
+        s
+        for s in approved
+        if not macro.is_entry_blocked(signal_date)
+        and not macro.is_market_blocked(signal_date, s["market"])
+    ]
+    blocked = pre_macro - len(approved)
+    if blocked:
+        logger.info(f"daily_signals: macro filter blocked {blocked} signal(s)")
 
     # Step 6: Write to DB (idempotent)
     if not dry_run:
