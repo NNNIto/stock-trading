@@ -1,45 +1,39 @@
 ================================================================================
   stock-trading 手動セットアップ残作業
-  作成: 2026-05-28 / 更新: 2026-05-29
+  作成: 2026-05-28 / 更新: 2026-06-01
 ================================================================================
 
-コードは完成・テスト済み。以下を完了すると日次自動化が稼働する。
+自動化は稼働中。残作業は GitHub Secrets のみ。
 
 
-[ ] STEP 1  Slack Webhook URL の設定
+[ ] STEP 1  GitHub Repository Secrets の登録
 
-    .env が既に存在する（JQUANTS_API_KEY 設定済み）。
-    SLACK_WEBHOOK_URL のみ追加すれば完了。
+    リポジトリ Settings → Secrets and variables → Actions → New repository secret
+    以下の4つを登録すること:
 
-    Slack Webhook URL の取得手順:
-      1. https://api.slack.com/apps を開く
-      2. 「Create New App」→「From scratch」→ アプリ名（例: stock-trading-bot）
-      3. ワークスペースを選択して「Create App」
-      4. 左メニュー「Incoming Webhooks」→ スイッチを ON
-      5. 「Add New Webhook to Workspace」→ 通知先チャンネルを選択
-      6. 表示された https://hooks.slack.com/services/... をコピー
+      JQUANTS_API_KEY       ← .env の値をコピー
+      STOOQ_API_KEY         ← .env の値をコピー
+      ALPHA_VANTAGE_API_KEY ← .env の値をコピー（未使用だが将来用）
+      SLACK_WEBHOOK_URL     ← .env の値をコピー
 
-    .env に追記:
-      SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
-
-    動作確認:
-      uv run python -c "
-      from src.notification.slack import notify_error
-      notify_error('Slack 通知テスト')
-      "
-      → Slack チャンネルに通知が届けば OK
+    登録後、Actions タブ → Daily Data Update → Run workflow で動作確認。
 
 
 ================================================================================
   完了済み作業
 ================================================================================
 
+[x] Slack Webhook URL の設定（.env に設定済み・動作確認済み 2026-06-01）
 [x] DB 最新化（2026-05-28 実施 / 最終日: 2026-05-26）
-[x] コード実装・テスト（329/329 PASS）
+[x] コード実装・テスト（356/356 PASS, カバレッジ 77%）
 [x] WF 分析・パラメータ確定（US 専用, Sharpe 0.63, CAGR +6.94%）
-[x] cron ジョブ登録（2026-05-29 実施）
-    - 0 6 * * 1-5  data_update.py
+[x] cron ジョブ登録（2026-06-01 更新）
+    - 0 6 * * 1-5  data_update.py（JP+US 両市場）
+    - 30 6 * * 1   data_update.py --bulk-earnings（JP 決算、毎週月曜）
+    - 45 6 * * 1   data_update.py --market US --with-earnings（US 決算、毎週月曜）
     - 15 6 * * 1-5 daily_signals.py
-[x] WSL2 cron 永続化（systemd=true で既に対応済み、追加作業不要）
+[x] WSL2 cron 永続化（systemd=true で既に対応済み）
+[x] S4/S6 を US 専用に限定（JP WF degradation -0.704 のため 2026-06-01）
+[x] expected_entry_price バグ修正（シグナル日の終値を記録するよう修正 2026-06-01）
 
 ================================================================================

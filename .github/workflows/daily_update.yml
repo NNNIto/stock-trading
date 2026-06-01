@@ -30,6 +30,7 @@ jobs:
       - name: Run data update
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+          STOOQ_API_KEY: ${{ secrets.STOOQ_API_KEY }}
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: uv run python scripts/data_update.py

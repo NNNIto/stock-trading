@@ -114,12 +114,17 @@ def _generate_buy_signals(
                     (pl.col("date") == signal_date) & (pl.col("action") == "BUY")
                 )
                 if today_buys.height > 0:
+                    close_price: float | None = None
+                    last_row = sym_data.filter(pl.col("date") == signal_date)
+                    if last_row.height > 0 and "close" in last_row.columns:
+                        close_price = float(last_row["close"][0])
                     results.append(
                         {
                             "symbol": sym,
                             "scenario_id": scenario.scenario_id,
                             "market": market,
                             "priority": priority,
+                            "close": close_price,
                         }
                     )
             except Exception as exc:
@@ -288,7 +293,7 @@ def run(
                         symbol=sig["symbol"],
                         action="BUY",
                         signal_date=signal_date,
-                        expected_entry_price=None,
+                        expected_entry_price=sig.get("close"),
                     )
                 logger.info(f"daily_signals: stored {len(approved)} signals")
     else:

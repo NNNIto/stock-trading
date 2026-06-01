@@ -1,7 +1,8 @@
 scenario_id: S6
 name: "平均回帰（短期反発）"
 enabled: true
-version: "1.3.0"
+enabled_markets: [US]    # JP は WF degradation -0.704 で非ロバスト
+version: "1.4.0"
 
 parameters:
   return_window: 5              # 下落判定期間（営業日）
@@ -34,3 +35,6 @@ change_log:
   - version: "1.3.0"
     date: "2026-05-26"
     reason: "WF推奨適用: return_threshold -0.07→-0.10(15/20), rsi_oversold 15→10(14/20), stop_loss -0.05→-0.07(14/20), take_profit 0.05→0.03(10/20)"
+  - version: "1.4.0"
+    date: "2026-06-01"
+    reason: "enabled_markets: [US] 追加。JP WF degradation_ratio -0.704 (基準0.5未達) のため JP 除外"
