@@ -1,0 +1,44 @@
+name: Daily Data Update
+
+# UTC と JST の対応（JST = UTC+9）:
+#   UTC 23:30 (日〜木) → JST 翌朝 08:30 (月〜金)
+#   UTC 14:30 (月〜金) → JST 当日 23:30 (月〜金)
+on:
+  schedule:
+    - cron: "30 23 * * 0-4"  # JST 月〜金 08:30
+    - cron: "30 14 * * 1-5"  # JST 月〜金 23:30
+  workflow_dispatch:          # 手動実行用
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies (production only)
+        run: uv sync
+
+      - name: Run data update
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: uv run python scripts/data_update.py
+
+      - name: Notify Slack on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"GitHub Actions: daily_update が失敗しました。\\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}"

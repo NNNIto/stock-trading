@@ -237,6 +237,16 @@ def run(
         result.trades.write_parquet(trades_path)
         logger.info(f"Trades saved  → {trades_path}")
 
+    # Dashboard CSV exports — overwrite "latest" files read by dashboard.py
+    equity_csv = _RESULTS_DIR / "equity_curve.csv"
+    result.equity_curve.write_csv(equity_csv)
+    logger.info(f"Equity curve  → {equity_csv}")
+
+    if not result.trades.is_empty():
+        trades_csv = _RESULTS_DIR / "trades.csv"
+        result.trades.write_csv(trades_csv)
+        logger.info(f"Trades CSV    → {trades_csv}")
+
 
 def _parse_args() -> argparse.Namespace:
     cfg = get_settings()

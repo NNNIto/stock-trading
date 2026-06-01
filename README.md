@@ -32,6 +32,19 @@ uv run mypy src/
 uv run ruff check .
 ```
 
+## GitHub Actions
+
+| ワークフロー | トリガー | 内容 |
+|---|---|---|
+| `ci.yml` | push / PR → main | ruff・mypy・pytest（カバレッジ 60%+） |
+| `daily_update.yml` | 平日 JST 08:30 / 23:30 | データ更新バッチ、失敗時 Slack 通知 |
+
+GitHub Secrets に以下を登録してください：`JQUANTS_API_KEY`, `SLACK_WEBHOOK_URL`, `ALPHA_VANTAGE_API_KEY`
+
+> **本番環境では常時稼働サーバーを推奨**
+> GitHub Actions の Runner は毎回クリーンな環境で起動するため、DuckDB のデータは実行間で保持されません。
+> `daily_update.yml` はデータ取得の動作確認用です。継続運用には Linux サーバー上での cron（`scripts/setup_cron.sh`）を使用してください。
+
 ## ドキュメント
 
 - `requirements.md`: 要件定義書

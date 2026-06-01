@@ -371,6 +371,73 @@ class Repository:
         except Exception:
             return False
 
+    def query_signals_recent(
+        self,
+        limit: int = 30,
+        start: str | None = None,
+        market: str | None = None,
+    ) -> pl.DataFrame:
+        """Return recent signals ordered by signal_date DESC.
+
+        Args:
+            limit: Maximum number of rows to return.
+            start: ISO date string; only signals on or after this date are returned.
+            market: If provided, filter by joining the universe table on market.
+        """
+        try:
+            if market:
+                sql = """
+                    SELECT s.*
+                    FROM signals s
+                    JOIN universe u ON s.symbol = u.symbol
+                    WHERE u.market = ?
+                """
+                params: list = [market]
+                if start:
+                    sql += " AND s.signal_date >= ?"
+                    params.append(start)
+                sql += " ORDER BY s.signal_date DESC LIMIT ?"
+                params.append(limit)
+            else:
+                sql = "SELECT * FROM signals"
+                params = []
+                if start:
+                    sql += " WHERE signal_date >= ?"
+                    params.append(start)
+                sql += " ORDER BY signal_date DESC LIMIT ?"
+                params.append(limit)
+            rows = self._conn.execute(sql, params).fetchall()
+            if not rows:
+                return pl.DataFrame()
+            cols = [d[0] for d in (self._conn.description or [])]
+            return pl.DataFrame([dict(zip(cols, r, strict=False)) for r in rows])
+        except Exception:
+            return pl.DataFrame()
+
+    def query_trades(
+        self,
+        start: str | None = None,
+        market: str | None = None,
+    ) -> pl.DataFrame:
+        """Return closed trades, optionally filtered by exit_date and market."""
+        try:
+            sql = "SELECT * FROM trades WHERE 1=1"
+            params: list = []
+            if start:
+                sql += " AND exit_date >= ?"
+                params.append(start)
+            if market:
+                sql += " AND market = ?"
+                params.append(market)
+            sql += " ORDER BY exit_date DESC"
+            rows = self._conn.execute(sql, params).fetchall()
+            if not rows:
+                return pl.DataFrame()
+            cols = [d[0] for d in (self._conn.description or [])]
+            return pl.DataFrame([dict(zip(cols, r, strict=False)) for r in rows])
+        except Exception:
+            return pl.DataFrame()
+
     def upsert_signal(
         self,
         signal_id: str,

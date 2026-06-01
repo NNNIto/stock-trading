@@ -42,7 +42,7 @@ addopts = "--cov=src --cov-report=term-missing --cov-fail-under=60"
 
 [tool.coverage.run]
 source = ["src"]
-omit = ["src/agents/*", "src/reporting/dashboard.py"]
+omit = []
 
 [tool.coverage.report]
 exclude_lines = [
@@ -57,7 +57,7 @@ strict = false
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
-exclude = ["src/agents/", "notebooks/"]
+exclude = ["notebooks/"]
 
 [[tool.mypy.overrides]]
 module = ["yfinance.*", "pandas_ta.*", "duckdb.*", "exchange_calendars.*"]
