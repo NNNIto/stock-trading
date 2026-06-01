@@ -6,15 +6,10 @@
 自動化は稼働中。残作業は GitHub Secrets のみ。
 
 
-[ ] STEP 1  GitHub Repository Secrets の登録
+[x] STEP 1  GitHub Repository Secrets の登録（2026-06-01 完了）
 
-    リポジトリ Settings → Secrets and variables → Actions → New repository secret
-    以下の2つを登録すること:
-
-      JQUANTS_API_KEY   ← .env の値をコピー
-      SLACK_WEBHOOK_URL ← .env の値をコピー
-
-    登録後、Actions タブ → Daily Data Update → Run workflow で動作確認。
+      JQUANTS_API_KEY   ✓
+      SLACK_WEBHOOK_URL ✓
 
 
 ================================================================================
