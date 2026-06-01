@@ -9,12 +9,10 @@
 [ ] STEP 1  GitHub Repository Secrets の登録
 
     リポジトリ Settings → Secrets and variables → Actions → New repository secret
-    以下の4つを登録すること:
+    以下の2つを登録すること:
 
-      JQUANTS_API_KEY       ← .env の値をコピー
-      STOOQ_API_KEY         ← .env の値をコピー
-      ALPHA_VANTAGE_API_KEY ← .env の値をコピー（未使用だが将来用）
-      SLACK_WEBHOOK_URL     ← .env の値をコピー
+      JQUANTS_API_KEY   ← .env の値をコピー
+      SLACK_WEBHOOK_URL ← .env の値をコピー
 
     登録後、Actions タブ → Daily Data Update → Run workflow で動作確認。
 
