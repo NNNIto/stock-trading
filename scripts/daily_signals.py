@@ -138,6 +138,20 @@ def _build_macro_filter(signal_date: date) -> MacroFilter:
 # ── Signal generation ─────────────────────────────────────────────────────────
 
 
+_SCENARIO_DETAIL_COLS: dict[str, list[str]] = {
+    "S2": ["high_252d", "vol_ratio_20", "ma_200", "ma_200_slope"],
+    "S4": ["open", "eps_surprise_pct", "vol_ratio_20", "ma_200"],
+    "S6": ["ret_5d", "rsi_2", "vol_ratio_20", "ma_200"],
+    "S3": ["rsi_14", "ma_50", "ma_200"],
+}
+
+
+def _extract_detail(row: dict[str, Any], scenario_id: str) -> dict[str, Any]:
+    """Extract scenario-specific indicator values for logging."""
+    cols = _SCENARIO_DETAIL_COLS.get(scenario_id, ["close"])
+    return {c: row.get(c) for c in cols if c in row}
+
+
 def _generate_buy_signals(
     scenarios: list[ScenarioBase],
     data: pl.DataFrame,
@@ -160,18 +174,26 @@ def _generate_buy_signals(
                     (pl.col("date") == signal_date) & (pl.col("action") == "BUY")
                 )
                 if today_buys.height > 0:
-                    close_price: float | None = None
                     last_row = sym_data.filter(pl.col("date") == signal_date)
-                    if last_row.height > 0 and "close" in last_row.columns:
-                        close_price = float(last_row["close"][0])
-                    results.append(
-                        {
-                            "symbol": sym,
-                            "scenario_id": scenario.scenario_id,
-                            "market": market,
-                            "priority": priority,
-                            "close": close_price,
-                        }
+                    row_dict = last_row.to_dicts()[0] if last_row.height > 0 else {}
+                    close_price = float(row_dict["close"]) if "close" in row_dict else None
+                    detail = _extract_detail(row_dict, scenario.scenario_id)
+                    sig = {
+                        "symbol": sym,
+                        "scenario_id": scenario.scenario_id,
+                        "market": market,
+                        "priority": priority,
+                        "close": close_price,
+                        "detail": detail,
+                    }
+                    results.append(sig)
+                    logger.info(
+                        f"signal: {scenario.scenario_id} {sym} ({market}) "
+                        + " ".join(
+                            f"{k}={v:.3g}" if isinstance(v, float) else f"{k}={v}"
+                            for k, v in detail.items()
+                            if v is not None
+                        )
                     )
             except Exception as exc:
                 logger.warning(
@@ -336,6 +358,19 @@ def run(
     blocked = pre_macro - len(approved)
     if blocked:
         logger.info(f"daily_signals: macro filter blocked {blocked} signal(s)")
+
+    # Log approved signal details
+    for s in approved:
+        detail = s.get("detail", {})
+        detail_str = "  ".join(
+            f"{k}={v:.3g}" if isinstance(v, float) else f"{k}={v}"
+            for k, v in detail.items()
+            if v is not None
+        )
+        logger.info(
+            f"approved: {s['scenario_id']} {s['symbol']} ({s['market']}) "
+            f"close=${s['close']:.2f}  {detail_str}"
+        )
 
     # Step 6: Write to DB (idempotent)
     if not dry_run:
