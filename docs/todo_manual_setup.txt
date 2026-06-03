@@ -1,15 +1,43 @@
 ================================================================================
   stock-trading 手動セットアップ残作業
-  作成: 2026-05-28 / 更新: 2026-06-01
+  作成: 2026-05-28 / 更新: 2026-06-03
 ================================================================================
 
-自動化は稼働中。残作業は GitHub Secrets のみ。
+自動化は稼働中。残作業は Windows Task Scheduler 登録のみ。
 
 
 [x] STEP 1  GitHub Repository Secrets の登録（2026-06-01 完了）
 
       JQUANTS_API_KEY   ✓
       SLACK_WEBHOOK_URL ✓
+
+
+[ ] STEP 2  Windows Task Scheduler 登録（WSL スリープ対策）
+
+  【背景】
+  WSL2 は Windows がスリープすると cron が止まる。
+  Windows Task Scheduler から wsl --exec でスクリプトを直接起動することで
+  マシン再起動・スリープ明けでも確実に実行される。
+
+  【登録手順】
+  1. PowerShell を管理者として起動
+  2. 以下を実行:
+
+      Set-ExecutionPolicy -Scope Process Bypass
+      cd \\wsl.localhost\Ubuntu\home\sys1\stock-trading\scripts\windows
+      .\setup_task_scheduler.ps1
+
+  3. タスクスケジューラで \StockTrading\ フォルダに4タスクが作成されたことを確認:
+      - DataUpdate   (平日 06:00)
+      - DailySignals (平日 06:15)
+      - EarningsJP   (月曜 06:30)
+      - EarningsUS   (月曜 06:45)
+
+  【注意】
+  - XML の <Command> パスは C:\stock-trading\scripts\windows\ を参照
+  - PowerShell スクリプトが WSL → Windows へ .bat を自動コピーする
+  - WakeToRun=true / StartWhenAvailable=true を設定済みのため、
+    スリープ明けでもスケジュール時刻を過ぎていれば即時実行される
 
 
 ================================================================================
