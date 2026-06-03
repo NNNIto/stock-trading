@@ -389,7 +389,20 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _last_trading_date() -> date:
+    """Return the latest date present in the OHLCV table.
+
+    date.today() in JST is tomorrow's date for US data (US market closes at
+    ~06:00 JST), so using today() would filter for a date with no rows yet.
+    """
+    with Repository() as repo:
+        result = repo._conn.execute("SELECT MAX(date) FROM ohlcv").fetchone()
+    if result and result[0]:
+        return date.fromisoformat(str(result[0]))
+    return date.today()
+
+
 if __name__ == "__main__":
     args = _parse_args()
-    signal_date = date.fromisoformat(args.date) if args.date else date.today()
+    signal_date = date.fromisoformat(args.date) if args.date else _last_trading_date()
     run(signal_date=signal_date, dry_run=args.dry_run, run_parity=args.parity)
