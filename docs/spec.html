@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>stock-trading システム仕様書</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #4f8ef7;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #0d1117;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* Layout */
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 260px; min-width: 260px; background: var(--surface);
+      border-right: 1px solid var(--border); padding: 24px 0;
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    nav .logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    nav .logo h1 { font-size: 15px; color: var(--accent); font-weight: 700; letter-spacing: 0.5px; }
+    nav .logo p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    nav ul { list-style: none; padding: 0 10px; }
+    nav ul li a { display: block; padding: 7px 12px; border-radius: 6px; font-size: 13px; color: var(--muted); transition: all 0.15s; }
+    nav ul li a:hover { background: var(--surface2); color: var(--text); }
+    nav ul li.group-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--border); padding: 16px 12px 4px; font-weight: 700; }
+    main { flex: 1; padding: 40px 48px; max-width: 960px; }
+
+    /* Sections */
+    .section { margin-bottom: 56px; scroll-margin-top: 20px; }
+    h2 { font-size: 22px; font-weight: 700; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 24px; color: var(--text); }
+    h3 { font-size: 16px; font-weight: 600; color: var(--accent); margin: 24px 0 12px; }
+    h4 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    p { color: var(--muted); margin-bottom: 12px; font-size: 14px; }
+
+    /* KPI Cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .kpi-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    .kpi-card.green .value { color: var(--green); }
+    .kpi-card.red .value { color: var(--red); }
+    .kpi-card.blue .value { color: var(--accent); }
+    .kpi-card.yellow .value { color: var(--yellow); }
+    .kpi-card .sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; margin-bottom: 24px; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--surface2); }
+    th { padding: 10px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(79,142,247,0.04); }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .tag.green { background: rgba(34,197,94,0.15); color: var(--green); }
+    .tag.red { background: rgba(239,68,68,0.15); color: var(--red); }
+    .tag.blue { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .tag.yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .tag.purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+
+    /* Code blocks */
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin-bottom: 16px; }
+    code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; font-size: 12.5px; color: #e2e8f0; }
+    p code, li code, td code { background: var(--code-bg); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+    .card h3 { margin-top: 0; }
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 700px) { .card-grid { grid-template-columns: 1fr; } }
+
+    /* Alert */
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; border-left: 4px solid; }
+    .alert.warn { background: rgba(245,158,11,0.1); border-color: var(--yellow); color: #fcd34d; }
+    .alert.info { background: rgba(79,142,247,0.1); border-color: var(--accent); color: #93c5fd; }
+    .alert.success { background: rgba(34,197,94,0.1); border-color: var(--green); color: #86efac; }
+
+    /* Progress bar */
+    .progress-bar { background: var(--border); border-radius: 999px; height: 8px; margin: 6px 0 16px; overflow: hidden; }
+    .progress-bar .fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+
+    /* Timeline */
+    .timeline { position: relative; padding-left: 24px; }
+    .timeline::before { content: ''; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+    .tl-item { position: relative; margin-bottom: 20px; }
+    .tl-item::before { content: ''; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+    .tl-item .tl-date { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .tl-item .tl-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .tl-item .tl-desc { font-size: 13px; color: var(--muted); }
+
+    /* Flow */
+    .flow { display: flex; flex-direction: column; gap: 2px; margin-bottom: 20px; }
+    .flow-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+    .flow-step .num { background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .flow-step .content .title { font-weight: 600; color: var(--text); }
+    .flow-step .content .detail { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .flow-arrow { text-align: center; color: var(--border); font-size: 18px; line-height: 1; }
+
+    /* Scenario badge */
+    .scenario-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .scenario-badge { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+    .s2 { background: rgba(79,142,247,0.2); color: var(--accent); }
+    .s4 { background: rgba(245,158,11,0.2); color: var(--yellow); }
+    .s6 { background: rgba(34,197,94,0.2); color: var(--green); }
+
+    ul.check { list-style: none; padding: 0; }
+    ul.check li { padding: 5px 0; font-size: 13px; color: var(--muted); }
+    ul.check li::before { content: '✓ '; color: var(--green); font-weight: 700; }
+    ul.check.todo li::before { content: '○ '; color: var(--yellow); }
+
+    .chip { display: inline-block; padding: 3px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--muted); margin: 2px; }
+
+    .year-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+    .year-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+    .year-card .yr { font-size: 11px; color: var(--muted); }
+    .year-card .cagr { font-size: 18px; font-weight: 700; }
+    .year-card .cagr.pos { color: var(--green); }
+    .year-card .cagr.neg { color: var(--red); }
+    .year-card .sh { font-size: 11px; color: var(--muted); }
+    .year-card .event { font-size: 10px; color: var(--yellow); margin-top: 2px; }
+
+    footer { border-top: 1px solid var(--border); padding: 24px 48px; color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar Nav -->
+  <nav>
+    <div class="logo">
+      <h1>stock-trading</h1>
+      <p>システム仕様書 v1.5.0</p>
+    </div>
+    <ul>
+      <li class="group-label">概要</li>
+      <li><a href="#overview">システム概要</a></li>
+      <li><a href="#performance">パフォーマンス</a></li>
+      <li class="group-label">アーキテクチャ</li>
+      <li><a href="#structure">ディレクトリ構成</a></li>
+      <li><a href="#dataflow">データフロー</a></li>
+      <li><a href="#database">データベース設計</a></li>
+      <li class="group-label">戦略</li>
+      <li><a href="#scenarios">シナリオ一覧</a></li>
+      <li><a href="#s2">S2: 52週高値ブレイクアウト</a></li>
+      <li><a href="#s4">S4: 決算後ドリフト (PEAD)</a></li>
+      <li><a href="#s6">S6: 平均回帰</a></li>
+      <li class="group-label">リスク管理</li>
+      <li><a href="#risk">リスクパラメータ</a></li>
+      <li><a href="#macro">マクロフィルタ</a></li>
+      <li class="group-label">インフラ</li>
+      <li><a href="#automation">自動化・スケジューリング</a></li>
+      <li><a href="#notification">Slack 通知</a></li>
+      <li><a href="#backtest">バックテスト</a></li>
+      <li><a href="#validation">品質検証</a></li>
+      <li class="group-label">運用</li>
+      <li><a href="#operations">日次・週次運用</a></li>
+      <li><a href="#roadmap">改善ロードマップ</a></li>
+      <li><a href="#setup">セットアップ</a></li>
+    </ul>
+  </nav>
+
+  <!-- Main Content -->
+  <main>
+
+    <!-- Header -->
+    <div style="margin-bottom: 40px;">
+      <h1 style="font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">stock-trading</h1>
+      <p style="font-size: 16px; color: var(--muted); margin-top: 6px;">S&amp;P500 中期スイング自動売買システム — システム仕様書</p>
+      <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+        <span class="chip">v1.5.0</span>
+        <span class="chip">Python 3.12</span>
+        <span class="chip">DuckDB</span>
+        <span class="chip">ペーパートレード中</span>
+        <span class="chip">2026-06-04 更新</span>
+      </div>
+    </div>
+
+    <!-- Overview -->
+    <section class="section" id="overview">
+      <h2>システム概要</h2>
+      <p>S&amp;P500（米国株）を対象とした中期スイング戦略の自動化システムです。複数のシグナルエンジン（ブレイクアウト・決算後ドリフト・平均回帰）を並行運用し、自動シグナル生成 + Slack 通知 + 手動発注の半自動フローで運用します。</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <h3>対象市場</h3>
+          <p><strong style="color:var(--text)">米国株 S&amp;P500</strong>（流動性上位 150 銘柄）<br>
+          日経 225 は過学習のため現在非推奨。</p>
+        </div>
+        <div class="card">
+          <h3>運用方式</h3>
+          <p>自動シグナル生成 → Slack 通知 → <strong style="color:var(--text)">手動発注</strong>（楽天証券）<br>
+          本番移行後は API 統合予定。</p>
+        </div>
+        <div class="card">
+          <h3>初期資本</h3>
+          <p><strong style="color:var(--text)">300 万円</strong> （ペーパートレード中）<br>
+          本番移行時は 30 万円（10%）から段階的に開始。</p>
+        </div>
+        <div class="card">
+          <h3>戦略タイプ</h3>
+          <p>S2 ブレイクアウト、S4 PEAD、S6 平均回帰の3戦略を<strong style="color:var(--text)">優先度順</strong>で統合運用。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance -->
+    <section class="section" id="performance">
+      <h2>パフォーマンス実績</h2>
+      <p>バックテスト期間: <strong style="color:var(--text)">2019-01-01 〜 2024-12-31</strong>（米国株）</p>
+
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <div class="label">Total Return</div>
+          <div class="value">+49.6%</div>
+          <div class="sub">6年累積</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="label">CAGR</div>
+          <div class="value">+6.94%</div>
+          <div class="sub">年率換算</div>
+        </div>
+        <div class="kpi-card yellow">
+          <div class="label">Sharpe</div>
+          <div class="value">0.63</div>
+          <div class="sub">CI: -0.06〜1.26</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="label">Max DD</div>
+          <div class="value">-15.1%</div>
+          <div class="sub">最大ドローダウン</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="label">Win Rate</div>
+          <div class="value">56.1%</div>
+          <div class="sub">全 123 件</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="label">Profit Factor</div>
+          <div class="value">1.92</div>
+        </div>
+        <div class="kpi-card yellow">
+          <div class="label">取引数/年</div>
+          <div class="value">~20</div>
+          <div class="sub">平均シグナル</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="label">OOS Sharpe</div>
+          <div class="value">1.35</div>
+          <div class="sub">2023-2024</div>
+        </div>
+      </div>
+
+      <h3>年次パフォーマンス</h3>
+      <div class="year-grid">
+        <div class="year-card">
+          <div class="yr">2019</div>
+          <div class="cagr pos">+18.2%</div>
+          <div class="sh">Sharpe 0.88</div>
+        </div>
+        <div class="year-card">
+          <div class="yr">2020</div>
+          <div class="cagr neg">−5.3%</div>
+          <div class="sh">Sharpe -0.42</div>
+          <div class="event">COVID</div>
+        </div>
+        <div class="year-card">
+          <div class="yr">2021</div>
+          <div class="cagr pos">+28.5%</div>
+          <div class="sh">Sharpe 1.15</div>
+        </div>
+        <div class="year-card">
+          <div class="yr">2022</div>
+          <div class="cagr neg">−18.1%</div>
+          <div class="sh">Sharpe -0.65</div>
+        </div>
+        <div class="year-card">
+          <div class="yr">2023</div>
+          <div class="cagr pos">+42.1%</div>
+          <div class="sh">Sharpe 1.76</div>
+          <div class="event">OOS ✓</div>
+        </div>
+        <div class="year-card">
+          <div class="yr">2024</div>
+          <div class="cagr pos">+15.2%</div>
+          <div class="sh">Sharpe 1.12</div>
+          <div class="event">OOS ✓</div>
+        </div>
+      </div>
+
+      <h3>シナリオ別貢献度</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>シナリオ</th><th>取引数</th><th>勝率</th><th>平均 PnL</th><th>Sharpe</th><th>PnL 貢献</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag blue">S2</span> 52週高値ブレイクアウト</td>
+              <td>55件</td><td>52.7%</td><td style="color:var(--green)">+3.47%</td><td>0.62</td>
+              <td><div class="progress-bar" style="width:120px"><div class="fill" style="width:70%"></div></div><small>70%</small></td>
+            </tr>
+            <tr>
+              <td><span class="tag yellow">S4</span> 決算後ドリフト</td>
+              <td>38件</td><td>47%</td><td style="color:var(--green)">+0.68%</td><td>0.12</td>
+              <td><div class="progress-bar" style="width:120px"><div class="fill" style="width:13%"></div></div><small>13%</small></td>
+            </tr>
+            <tr>
+              <td><span class="tag green">S6</span> 平均回帰</td>
+              <td>30件</td><td>70%</td><td style="color:var(--green)">+1.56%</td><td>0.48</td>
+              <td><div class="progress-bar" style="width:120px"><div class="fill" style="width:18%"></div></div><small>18%</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Walk-Forward 検証</h3>
+      <div class="card" style="border-color: var(--yellow);">
+        <div class="alert warn">軽度過学習 — degradation_ratio 0.331（robust 基準: 0.5 以上）</div>
+        <div class="table-wrap" style="margin-bottom:0">
+          <table>
+            <thead><tr><th>指標</th><th>IS（学習期間）</th><th>OOS（検証期間）</th></tr></thead>
+            <tbody>
+              <tr><td>Sharpe 中央値</td><td>0.348</td><td>0.105</td></tr>
+              <tr><td>期間設定</td><td colspan="2">12ヶ月 train + 3ヶ月 val（ローリング、20窓）</td></tr>
+              <tr><td>OOS 判定開始</td><td colspan="2">2025-01-01</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Directory Structure -->
+    <section class="section" id="structure">
+      <h2>ディレクトリ構成</h2>
+      <pre><code>stock-trading/
+├── config/
+│   ├── settings.yaml              # グローバル設定（資本・リスク・コスト）
+│   └── scenarios/
+│       ├── s2.yaml                # 52週高値ブレイクアウト
+│       ├── s3.yaml                # 押し目買い（永久無効）
+│       ├── s4.yaml                # 決算後ドリフト (PEAD)
+│       └── s6.yaml                # 平均回帰
+│
+├── src/
+│   ├── data/                      # データ取得・DB管理・指標計算
+│   │   ├── fetcher.py             #   YFinance / Stooq / J-Quants
+│   │   ├── repository.py          #   DuckDB ORM (idempotent upsert)
+│   │   ├── indicators.py          #   pandas-ta 技術指標バッチ計算
+│   │   ├── earnings.py            #   決算情報付加
+│   │   ├── quality.py             #   データ品質チェック
+│   │   └── universe.py            #   銘柄リスト管理
+│   ├── scenarios/                 # シグナル生成（Strategy パターン）
+│   ├── backtest/                  # バックテストエンジン・WF分析
+│   │   ├── engine.py              #   日次シミュレーション・マクロフィルタ
+│   │   ├── execution.py           #   約定価格計算（スリッページ・コスト）
+│   │   ├── metrics.py             #   CAGR/Sharpe/Sortino/MaxDD 計算
+│   │   └── walkforward.py         #   Walk-Forward グリッドサーチ
+│   ├── portfolio/                 # ライブポジション管理
+│   │   ├── manager.py             #   CRUD（paper/live モード）
+│   │   ├── sizer.py               #   FixedFractionSizer（デフォルト15%）
+│   │   └── risk.py                #   ポジション数・セクター・DD制限
+│   ├── validation/                # バックテスト品質検証
+│   ├── notification/slack.py      # Slack Block Kit 通知
+│   ├── reporting/dashboard.py     # Streamlit ダッシュボード
+│   └── agents/trading_agent.py   # オーケストレーター（dry_run対応）
+│
+├── scripts/
+│   ├── data_update.py             # データ更新バッチ（06:00 JST）
+│   ├── daily_signals.py           # シグナル生成 + 通知（06:15 JST）
+│   ├── run_backtest.py            # バックテスト CLI
+│   └── windows/                   # Windows タスクスケジューラ設定
+│
+├── data/trading.duckdb            # メイン OLAP DB（オンプロセス）
+├── results/                       # バックテスト結果 JSON
+├── tests/                         # テストスイート（~329件）
+├── .github/workflows/             # CI / 自動データ更新
+└── docs/                          # ドキュメント</code></pre>
+    </section>
+
+    <!-- Data Flow -->
+    <section class="section" id="dataflow">
+      <h2>データフロー</h2>
+
+      <h3>毎日 06:00 JST — データ更新</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="num">1</div><div class="content"><div class="title">データ取得</div><div class="detail">YFinance で前日終値 + FX レート取得。失敗時は Stooq → J-Quants にフォールバック</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">2</div><div class="content"><div class="title">品質チェック</div><div class="detail">欠損・外れ値・OHLC 矛盾を検出。日次リターン &gt;30% は除外</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">3</div><div class="content"><div class="title">DB 保存</div><div class="detail">DuckDB に idempotent upsert（再実行安全）</div></div></div>
+      </div>
+
+      <h3>毎日 06:15 JST — シグナル生成</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="num">1</div><div class="content"><div class="title">OHLCV 読み込み</div><div class="detail">DB から直近 400 日分のデータ取得</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">2</div><div class="content"><div class="title">指標計算</div><div class="detail">MA(20/50/200) + スロープ、RSI(2/14)、ATR、vol_ratio、52週高値を一括計算</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">3</div><div class="content"><div class="title">決算情報付加</div><div class="detail">earnings.py で EPS サプライズ・決算日を OHLCV に結合</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">4</div><div class="content"><div class="title">シグナル生成</div><div class="detail">S2 / S4 / S6 × 全銘柄でエントリー判定。同銘柄競合時は優先度 S4 &gt; S2 &gt; S6 で解決</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">5</div><div class="content"><div class="title">マクロフィルタ</div><div class="detail">VIX &gt; 35 / 指数 MA200 下 / FOMC 日 でエントリーブロック</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">6</div><div class="content"><div class="title">DB 保存 + Slack 通知</div><div class="detail">signals テーブルに idempotent upsert。新規シグナルを Slack に配信</div></div></div>
+      </div>
+
+      <h3>手動発注フロー</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="num">1</div><div class="content"><div class="title">Slack 確認</div><div class="detail">銘柄・シナリオ・価格・指標詳細を確認</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">2</div><div class="content"><div class="title">証券会社で発注</div><div class="detail">楽天証券で注文（翌営業日始値約定が目安）</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">3</div><div class="content"><div class="title">PortfolioManager に入力</div><div class="detail">約定結果を DB に記録してポジション追跡開始</div></div></div>
+      </div>
+    </section>
+
+    <!-- Database Design -->
+    <section class="section" id="database">
+      <h2>データベース設計（DuckDB）</h2>
+      <p>オンプロセス OLAP DB。セットアップ不要で SQL を完全サポート。ファイルパス: <code>data/trading.duckdb</code></p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>テーブル</th><th>主キー</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>ohlcv</code></td><td>(symbol, date)</td><td>分割・配当調整済み OHLCV（US / JP）</td></tr>
+            <tr><td><code>earnings</code></td><td>(symbol, report_date)</td><td>EPS 実績・予想・サプライズ率</td></tr>
+            <tr><td><code>fx_rates</code></td><td>(pair, date)</td><td>USDJPY レート</td></tr>
+            <tr><td><code>signals</code></td><td>UNIQUE(symbol, signal_date, scenario_id, action)</td><td>生成シグナル（idempotent）</td></tr>
+            <tr><td><code>positions</code></td><td>symbol</td><td>ライブポジション（paper / live モード）</td></tr>
+            <tr><td><code>trades</code></td><td>trade_id</td><td>完了トレード（バックテスト・本番）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>コスト設定（config/settings.yaml）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>項目</th><th>値</th><th>説明</th></tr></thead>
+          <tbody>
+            <tr><td>スリッページ</td><td>0.2%（片道）</td><td>execution.py で約定価格に加算</td></tr>
+            <tr><td>手数料</td><td>0.1%（片道）</td><td>往復で 0.2%</td></tr>
+            <tr><td>FX コスト</td><td>0.5%（片道）</td><td>USD 建て注文時</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Scenarios Overview -->
+    <section class="section" id="scenarios">
+      <h2>シナリオ一覧</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>名称</th><th>状態</th><th>対象市場</th><th>勝率</th><th>平均 PnL</th><th>優先度</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag blue">S2</span></td>
+              <td>52週高値ブレイクアウト</td>
+              <td><span class="tag green">有効</span></td>
+              <td>US</td><td>52.7%</td><td style="color:var(--green)">+3.47%</td><td>2</td>
+            </tr>
+            <tr>
+              <td><span class="tag red">S3</span></td>
+              <td>押し目買い（RSI-2）</td>
+              <td><span class="tag red">永久無効</span></td>
+              <td>—</td><td>—</td><td>—</td><td>—</td>
+            </tr>
+            <tr>
+              <td><span class="tag yellow">S4</span></td>
+              <td>決算後ドリフト（PEAD）</td>
+              <td><span class="tag green">有効</span></td>
+              <td>US</td><td>47%</td><td style="color:var(--green)">+0.68%</td><td>1（最高）</td>
+            </tr>
+            <tr>
+              <td><span class="tag green">S6</span></td>
+              <td>平均回帰（短期反発）</td>
+              <td><span class="tag green">有効</span></td>
+              <td>US</td><td>70%</td><td style="color:var(--green)">+1.56%</td><td>3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="alert info">S3 無効化の理由: S6 と条件が重複し、統計的にエッジなし。</div>
+      <div class="alert warn">JP 市場は WF degradation_ratio -0.704（基準 0.5 未達）のため全シナリオ非推奨。</div>
+    </section>
+
+    <!-- S2 -->
+    <section class="section" id="s2">
+      <h2>S2 — 52週高値ブレイクアウト</h2>
+      <div class="scenario-header">
+        <div class="scenario-badge s2">S2</div>
+        <div>
+          <div style="font-size:16px; font-weight:700">52週高値ブレイクアウト</div>
+          <div style="font-size:12px; color:var(--muted)">v1.3.0 &nbsp;|&nbsp; US のみ &nbsp;|&nbsp; 中期トレンドフォロー</div>
+        </div>
+      </div>
+
+      <h3>エントリー条件（全て同時成立）</h3>
+      <pre><code>1. close &gt; high_252d.shift(1)     # 前日の52週高値を上抜け
+2. vol_ratio_20 &gt;= 2.0            # 出来高が20日平均の2倍以上
+3. ma_200_slope &gt; 0               # 200MA が上向き（20日前比）
+4. close &gt; ma_200                 # 200MA より上方
+5. 上記を 2 営業日連続確認         # フェイクブレイク対策</code></pre>
+
+      <h3>エグジット条件（最初にマッチ）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>ルール</th></tr></thead>
+          <tbody>
+            <tr><td>STOP_LOSS</td><td><code>close ≤ entry × 0.90</code></td></tr>
+            <tr><td>TRAILING_STOP</td><td><code>close ≤ peak × 0.85</code></td></tr>
+            <tr><td>TREND_REVERSAL</td><td><code>close &lt; MA20</code> かつ <code>slope &lt; 0</code></td></tr>
+            <tr><td>TIME_EXIT</td><td>180 営業日経過</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>主要パラメータ</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>パラメータ</th><th>値</th><th>備考</th></tr></thead>
+          <tbody>
+            <tr><td>high_lookback_days</td><td>252</td><td>52週（営業日）</td></tr>
+            <tr><td>volume_multiplier</td><td>2.0</td><td>v1.2→1.3 で勝率 46→53% に改善した重要パラメータ</td></tr>
+            <tr><td>breakout_confirm_days</td><td>2</td><td>フェイクブレイク対策</td></tr>
+            <tr><td>stop_loss_pct</td><td>-10%</td><td></td></tr>
+            <tr><td>trailing_stop_pct</td><td>-15%（高値から）</td><td></td></tr>
+            <tr><td>time_exit_days</td><td>180</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- S4 -->
+    <section class="section" id="s4">
+      <h2>S4 — 決算後ドリフト（PEAD）</h2>
+      <div class="scenario-header">
+        <div class="scenario-badge s4">S4</div>
+        <div>
+          <div style="font-size:16px; font-weight:700">Post-Earnings Announcement Drift</div>
+          <div style="font-size:12px; color:var(--muted)">v1.5.0 &nbsp;|&nbsp; US のみ &nbsp;|&nbsp; 最優先シナリオ</div>
+        </div>
+      </div>
+
+      <h3>エントリー条件</h3>
+      <p style="font-size:13px; color:var(--muted)">決算日を T 日とした場合、以下をすべて確認:</p>
+      <pre><code># T 日（決算当日）
+is_earnings_day == True
+(open - prev_close) / prev_close &gt;= 0.03    # ギャップアップ +3%
+(close - prev_close) / prev_close &gt;= 0.03   # 当日リターン +3%
+vol_ratio_20 &gt;= 2.0
+eps_surprise_pct &gt; 0                         # EPS サプライズ 正
+
+# T+2 日（エントリー当日）
+close &gt; ma_200
+ma_200_slope &gt; 0</code></pre>
+
+      <h3>エグジット条件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>ルール</th></tr></thead>
+          <tbody>
+            <tr><td>STOP_LOSS</td><td><code>close ≤ entry × 0.90</code></td></tr>
+            <tr><td>TAKE_PROFIT</td><td><code>close ≥ entry × 1.15</code></td></tr>
+            <tr><td>TRAILING_STOP</td><td><code>close ≤ peak × 0.85</code></td></tr>
+            <tr><td>PRE_EARNINGS</td><td>次回決算まで 5 営業日以内</td></tr>
+            <tr><td>TIME_EXIT</td><td>60 営業日経過</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- S6 -->
+    <section class="section" id="s6">
+      <h2>S6 — 平均回帰（短期反発）</h2>
+      <div class="scenario-header">
+        <div class="scenario-badge s6">S6</div>
+        <div>
+          <div style="font-size:16px; font-weight:700">平均回帰（短期反発）</div>
+          <div style="font-size:12px; color:var(--muted)">v1.4.0 &nbsp;|&nbsp; US のみ &nbsp;|&nbsp; 勝率 70%</div>
+        </div>
+      </div>
+
+      <div class="alert warn">
+        <strong>重要:</strong> <code>return_threshold</code> を <code>-0.10</code> から <code>-0.07</code> に緩めると勝率が <strong>82.6% → 63.0%</strong> に急落。絶対に変更禁止。
+      </div>
+
+      <h3>エントリー条件（全て同時成立）</h3>
+      <pre><code>1. ret_5d &lt;= -0.10       # 過去5日で -10% 以上の下落 ← 変更禁止
+2. close &gt; ma_200        # 長期上昇トレンド中
+3. vol_ratio_20 &gt;= 2.0   # 売り圧力のクライマックス
+4. rsi_2 &lt; 10            # 極端な売られすぎ</code></pre>
+
+      <h3>エグジット条件</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>条件</th><th>ルール</th></tr></thead>
+          <tbody>
+            <tr><td>TAKE_PROFIT</td><td><code>close ≥ entry × 1.03</code> または <code>rsi_2 ≥ 70</code></td></tr>
+            <tr><td>STOP_LOSS</td><td><code>close ≤ entry × 0.93</code></td></tr>
+            <tr><td>TIME_EXIT</td><td>10 営業日経過</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Risk Management -->
+    <section class="section" id="risk">
+      <h2>リスク管理</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h3>ポジションサイジング</h3>
+          <ul class="check">
+            <li>デフォルト: 資本の 15% / ポジション</li>
+            <li>最大: 資本の 20% / ポジション</li>
+            <li>最大ポジション数: 7</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>集中リスク制限</h3>
+          <ul class="check">
+            <li>同一セクター: 最大 3 ポジション</li>
+            <li>DD サーキットブレーカー: -20%</li>
+            <li>VIX フィルタ: 35 超でエントリー停止</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Macro Filter -->
+    <section class="section" id="macro">
+      <h2>マクロフィルタ</h2>
+      <p>以下の条件を満たす場合、新規エントリーを自動ブロック:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>フィルタ</th><th>閾値</th><th>対象市場</th></tr></thead>
+          <tbody>
+            <tr><td>VIX 恐怖指数</td><td>&gt; 35</td><td>US</td></tr>
+            <tr><td>ポートフォリオ DD</td><td>&lt; -20%</td><td>全市場</td></tr>
+            <tr><td>指数 MA200 下方</td><td>—</td><td>全市場</td></tr>
+            <tr><td>日経 ドローダウン</td><td>&lt; -10%</td><td>JP（現在非推奨）</td></tr>
+            <tr><td>FOMC / BOJ 開催日</td><td>—</td><td>ブラックアウト</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Automation -->
+    <section class="section" id="automation">
+      <h2>自動化・スケジューリング</h2>
+
+      <h3>GitHub Actions（CI / データ更新）</h3>
+      <div class="card-grid">
+        <div class="card">
+          <h4>ci.yml</h4>
+          <p>push / PR → main で自動実行</p>
+          <ul class="check">
+            <li>ruff lint</li>
+            <li>mypy 型チェック</li>
+            <li>pytest（カバレッジ 60%+）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>daily_update.yml</h4>
+          <p>平日 JST 08:30 / 23:30 で実行</p>
+          <pre style="margin:0"><code>UTC 23:30 日〜木 → JST 翌朝 08:30
+UTC 14:30 月〜金 → JST 当日 23:30</code></pre>
+        </div>
+      </div>
+      <div class="alert warn">GitHub Actions ランナーはクリーンな環境で起動するため、DuckDB データは実行間で保持されません。本番環境には Linux サーバー上の cron を推奨。</div>
+
+      <h3>本番 cron（Linux サーバー）</h3>
+      <pre><code># cron 登録
+bash scripts/setup_cron.sh
+
+# 登録内容
+0  6 * * 1-5  uv run python scripts/data_update.py
+15 6 * * 1-5  uv run python scripts/daily_signals.py</code></pre>
+
+      <h3>Windows タスクスケジューラ</h3>
+      <p><code>scripts/windows/</code> 配下のスクリプトを使用:</p>
+      <pre><code>scripts/windows/
+├── setup_task_scheduler.ps1    # PowerShell でタスク一括登録
+├── gen_register.py             # XML からタスク生成
+├── StockDailySignals.xml       # シグナル生成タスク定義
+├── StockDataUpdate.xml         # データ更新タスク定義
+├── StockEarningsJP.xml         # 日本株決算タスク定義
+└── StockEarningsUS.xml         # 米国株決算タスク定義</code></pre>
+    </section>
+
+    <!-- Notifications -->
+    <section class="section" id="notification">
+      <h2>Slack 通知</h2>
+      <h3>設定方法</h3>
+      <pre><code># .env ファイルに追記
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../W...</code></pre>
+
+      <h3>通知タイプ一覧</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>通知種別</th><th>発信元</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td>新規シグナル</td><td>daily_signals.py</td><td>銘柄・シナリオ・指標詳細（Block Kit）</td></tr>
+            <tr><td>エグジット推奨</td><td>daily_signals.py</td><td>エグジット理由・含み損益（Block Kit）</td></tr>
+            <tr><td>日次サマリー</td><td>daily_signals.py</td><td>シグナル数・保有数・評価額</td></tr>
+            <tr><td>サーキットブレーカー</td><td>BacktestEngine</td><td>ポートフォリオ DD -20% アラート</td></tr>
+            <tr><td>注文記録</td><td>TradingAgent</td><td>銘柄・株数・単価・投入額・モード</td></tr>
+            <tr><td>エラー通知</td><td>各種スクリプト</td><td>テキスト（GitHub Actions から）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Backtest -->
+    <section class="section" id="backtest">
+      <h2>バックテスト</h2>
+
+      <h3>実行コマンド</h3>
+      <pre><code># フル期間バックテスト
+uv run python scripts/run_backtest.py \
+  --start 2019-01-01 --end 2024-12-31 \
+  --market US \
+  --out results/my_run.json
+
+# Walk-Forward 分析
+uv run python scripts/walkforward.py --market US
+
+# Streamlit ダッシュボード
+uv run streamlit run src/reporting/dashboard.py</code></pre>
+
+      <h3>BacktestEngine — 1日の処理フロー</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="num">1</div><div class="content"><div class="title">OHLCV + 指標ロード</div><div class="detail">当日のデータを DuckDB から取得</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">2</div><div class="content"><div class="title">BUY シグナル生成</div><div class="detail">各シナリオ × 全銘柄 → pending_entries キュー</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">3</div><div class="content"><div class="title">EXIT 判定</div><div class="detail">オープンポジションのエグジット理由を確認</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">4</div><div class="content"><div class="title">マクロフィルタ + コンフリクト解決</div><div class="detail">VIX / DD チェック。同銘柄競合は S4 &gt; S2 &gt; S6 で優先度解決</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">5</div><div class="content"><div class="title">BUY / SELL 実行</div><div class="detail">スリッページ・手数料・FX コストを含む Fill オブジェクト生成</div></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><div class="num">6</div><div class="content"><div class="title">時価評価</div><div class="detail">equity curve 更新。ピーク価格更新（トレイリングストップ用）</div></div></div>
+      </div>
+    </section>
+
+    <!-- Validation -->
+    <section class="section" id="validation">
+      <h2>品質検証</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>モジュール</th><th>検証内容</th><th>基準</th></tr></thead>
+          <tbody>
+            <tr><td><code>sanity_checker.py</code></td><td>過学習検出</td><td>取引数 ≥ 30 / Sharpe ≤ 3.0 / 勝率 ≤ 80%</td></tr>
+            <tr><td><code>lookahead_detector.py</code></td><td>先読みバイアス検出</td><td>ウォームアップ期間・NaN ハンドリング検査</td></tr>
+            <tr><td><code>parity_checker.py</code></td><td>シグナル乖離検出</td><td>日次シグナル vs バックテストの整合性（月曜自動実行）</td></tr>
+            <tr><td><code>overfitting_monitor.py</code></td><td>WF degradation 監視</td><td>degradation_ratio ≥ 0.5 で robust 判定</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>テストスイート</h3>
+      <pre><code>uv run pytest                    # 全テスト（~329件）
+uv run pytest --cov=src          # カバレッジ付き（要求: 60%+）
+uv run pytest tests/scenarios/   # シナリオテストのみ</code></pre>
+    </section>
+
+    <!-- Operations -->
+    <section class="section" id="operations">
+      <h2>日次・週次運用</h2>
+
+      <h3>日次フロー</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>時刻 (JST)</th><th>作業</th><th>手動 / 自動</th></tr></thead>
+          <tbody>
+            <tr><td>06:00</td><td>data_update.py 実行 → DB 更新</td><td><span class="tag green">自動</span></td></tr>
+            <tr><td>06:15</td><td>daily_signals.py 実行 → Slack 通知</td><td><span class="tag green">自動</span></td></tr>
+            <tr><td>08:00〜09:00</td><td>Slack でシグナル確認 → 楽天証券で発注</td><td><span class="tag yellow">手動</span></td></tr>
+            <tr><td>翌営業日</td><td>約定結果を PortfolioManager に入力</td><td><span class="tag yellow">手動</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>週次チェックリスト</h3>
+      <ul class="check todo">
+        <li>parity check の結果確認（logs/daily_signals.log）</li>
+        <li>オープンポジションの含み損益確認</li>
+        <li>DD が -20% を超えていないか確認</li>
+        <li>先週のシグナル精度振り返り</li>
+      </ul>
+
+      <h3>月次チェックリスト</h3>
+      <ul class="check todo">
+        <li>月次パフォーマンス集計</li>
+        <li>バックテスト再実行（IS 期間）</li>
+        <li>WF degradation ratio 確認（基準: 0.5 以上）</li>
+        <li>最大 DD 確認（閾値: -20%）</li>
+      </ul>
+
+      <h3>ペーパートレード → 本番の移行条件</h3>
+      <ul class="check todo">
+        <li>ペーパートレード期間: 2 週間以上</li>
+        <li>シグナル件数: 5 件以上で勝率 40% 以上</li>
+        <li>システム異常なし（cron / Slack / DB 全て正常）</li>
+        <li>Sharpe ≥ 0.6（現状 0.63 → 達成済）</li>
+        <li>初期資金 30 万円（300 万の 10%）から段階的に開始</li>
+      </ul>
+    </section>
+
+    <!-- Roadmap -->
+    <section class="section" id="roadmap">
+      <h2>改善ロードマップ（Sharpe 0.63 → 1.0）</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>フェーズ</th><th>施策</th><th>期待効果</th><th>時期</th><th>状態</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag blue">A</span></td>
+              <td>Universe 拡大（150 → 200 銘柄）</td>
+              <td>シグナル +35%、Sharpe +0.15</td>
+              <td>6/16〜</td>
+              <td><span class="tag yellow">予定</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag blue">B</span></td>
+              <td>S6 RSI 緩和（oversold 10 → 15）</td>
+              <td>S6 シグナル +60%、品質維持</td>
+              <td>6/20〜</td>
+              <td><span class="tag yellow">予定</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag blue">C</span></td>
+              <td>S4 EPS サプライズ強化（0% → 5%）</td>
+              <td>S4 品質向上（avg PnL +0.68% → +2%）</td>
+              <td>6/25〜</td>
+              <td><span class="tag yellow">予定</span></td>
+            </tr>
+            <tr>
+              <td><span class="tag purple">D</span></td>
+              <td>少額本番デビュー（30 万円）</td>
+              <td>実績検証</td>
+              <td>7 月〜</td>
+              <td><span class="tag purple">検討中</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>各施策の変更箇所</h3>
+      <pre><code># Phase A: Universe 拡大
+# config/settings.yaml
+universe_filter:
+  us_top_n: 200    # 150 → 200
+
+# Phase B: S6 RSI 緩和
+# config/scenarios/s6.yaml
+parameters:
+  rsi_oversold: 15    # 10 → 15
+
+# Phase C: S4 EPS サプライズ強化
+# config/scenarios/s4.yaml
+parameters:
+  surprise_threshold_pct: 0.05    # 0.0 → 0.05</code></pre>
+    </section>
+
+    <!-- Setup -->
+    <section class="section" id="setup">
+      <h2>セットアップ</h2>
+
+      <h3>必須環境変数（.env）</h3>
+      <pre><code># Slack 通知（推奨）
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+
+# J-Quants（JP 決算データ、任意）
+JQUANTS_API_KEY=...
+
+# Stooq（フォールバック、任意）
+STOOQ_API_KEY=...</code></pre>
+
+      <h3>初期セットアップ手順</h3>
+      <pre><code># 1. リポジトリクローン
+git clone https://github.com/NNNIto/stock-trading.git
+cd stock-trading
+
+# 2. uv インストール（未インストール時）
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. 依存関係インストール
+uv sync --extra dev
+
+# 4. 環境変数設定
+cp .env.example .env
+# .env を編集して各種キーを設定
+
+# 5. テスト実行
+uv run pytest --cov=src
+
+# 6. cron 登録（Linux 本番環境）
+bash scripts/setup_cron.sh</code></pre>
+
+      <h3>手動ポジション入力（約定後）</h3>
+      <pre><code>uv run python -c "
+from datetime import date
+from src.portfolio.manager import PortfolioManager
+with PortfolioManager() as pm:
+    pm.open_position('AAPL', 'S2', 'US', date.today(), 178.5, 84, mode='paper')
+"</code></pre>
+
+      <h3>トラブルシューティング</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>症状</th><th>原因</th><th>対処</th></tr></thead>
+          <tbody>
+            <tr><td>Slack に「DB 空」エラー</td><td>data_update が失敗</td><td><code>uv run python scripts/data_update.py</code> を手動実行</td></tr>
+            <tr><td>シグナルが連日 0 件</td><td>指数が 200MA 下（マクロフィルタ）</td><td>正常。市場回復を待つ</td></tr>
+            <tr><td>parity check FAIL</td><td>シナリオロジックに不整合</td><td>ログ確認してバグ修正</td></tr>
+            <tr><td>Slack 通知が来ない</td><td>SLACK_WEBHOOK_URL の問題</td><td>.env の値を確認</td></tr>
+            <tr><td>カバレッジ &lt; 60%</td><td>新規パスが増加</td><td>テストケース追加</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  stock-trading システム仕様書 &nbsp;|&nbsp; 最終更新: 2026-06-04 &nbsp;|&nbsp; v1.5.0
+</footer>
+
+<script>
+  // Smooth scroll + active nav highlight
+  document.querySelectorAll('nav a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+</script>
+</body>
+</html>
